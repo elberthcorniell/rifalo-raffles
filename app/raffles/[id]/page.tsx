@@ -275,6 +275,7 @@ export default function RaffleDetailPage() {
             raffleId={raffle.id}
             ticketPrice={raffle.ticketPrice}
             availableTickets={remainingTickets}
+            minTickets={raffle.minTickets}
           />
         </>
       )}

@@ -95,33 +95,38 @@
   }
 
   .dark {
-    --background: 216 72% 8%;
+    /* Surfaces — brand primary/secondary stay via inline CSS vars from OrgBrandProvider */
+    --background: 220 30% 7%;
+    --background-alt: 220 28% 10%;
     --foreground: 210 40% 98%;
-    --card: 216 72% 10%;
+    --card: 220 28% 11%;
     --card-foreground: 210 40% 98%;
-    --card-border: 216 40% 20%;
-    --popover: 216 72% 10%;
+    --card-border: 220 20% 18%;
+    --popover: 220 28% 11%;
     --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 216 72% 16%;
-    --secondary: 210 75% 46%;
+    --primary-foreground: 0 0% 100%;
     --secondary-foreground: 0 0% 100%;
-    --muted: 216 40% 18%;
-    --muted-foreground: 216 20% 65%;
-    --accent: 216 40% 18%;
+    --muted: 220 20% 16%;
+    --muted-foreground: 215 16% 65%;
+    --accent: 220 24% 16%;
     --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 62.8% 40%;
     --destructive-foreground: 210 40% 98%;
-    --border: 216 40% 20%;
-    --input: 216 40% 20%;
+    --border: 220 20% 18%;
+    --input: 220 20% 18%;
     --ring: 210 75% 46%;
-    --sidebar-background: 216 72% 8%;
+    --gradient-hero: radial-gradient(
+      ellipse at center,
+      hsl(var(--secondary) / 0.14),
+      transparent 70%
+    );
+    --sidebar-background: 220 30% 7%;
     --sidebar-foreground: 210 40% 98%;
     --sidebar-primary: 210 75% 46%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 216 40% 15%;
+    --sidebar-accent: 220 24% 14%;
     --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 216 40% 20%;
+    --sidebar-border: 220 20% 18%;
     --sidebar-ring: 210 75% 46%;
   }
 }

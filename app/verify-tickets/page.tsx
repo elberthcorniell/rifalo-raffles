@@ -15,11 +15,11 @@ interface TicketElement {
   description: string;
   quantity: number;
   price: number;
-  resourceId?: number;
+  resourceId?: string;
 }
 
 interface TicketRecord {
-  id: number;
+  id: string;
   date: string;
   state: string;
   amount: number;
@@ -40,7 +40,7 @@ interface VerifyResponse {
   success: boolean;
   data?: {
     contact: {
-      id: number;
+      id: string;
       name: string;
     } | null;
     tickets: TicketRecord[];
@@ -289,7 +289,7 @@ function VerifyTicketsContent() {
                       <div className="flex items-start justify-between mb-4">
                         <div>
                           <p className="text-xs text-muted-foreground mb-1">
-                            Orden #{ticket.id}
+                            Orden #{ticket.id.slice(0, 8)}
                           </p>
                           <p className="font-bold text-xl text-foreground">
                             {formatCurrency(ticket.amount, ticket.currency)}

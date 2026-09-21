@@ -8,30 +8,30 @@ import Testimonials from "@/components/Testimonials";
 import Footer from "@/components/Footer";
 import StickyRaffleBanner from "@/components/StickyRaffleBanner";
 import { fetchFirstRaffle } from "@/lib/raffles";
-import { BRAND } from "@/lib/constants";
+import { getOrgFromHeaders, getOrgBrand } from "@/lib/tenant";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const firstRaffle = await fetchFirstRaffle();
+  const org = await getOrgFromHeaders()
+  if (!org) {
+    return { title: 'Organización no encontrada' }
+  }
+  const brand = getOrgBrand(org)
+  const firstRaffle = await fetchFirstRaffle(org.id);
 
   if (!firstRaffle) {
     return {
-      title: `${BRAND.name} - Plataforma de Rifas en República Dominicana`,
-      description: "Participa en rifas de productos premium. Plataforma segura y transparente en República Dominicana.",
+      title: `${brand.name} - Rifas`,
+      description: brand.tagline || `Participa en rifas en ${brand.name}.`,
       openGraph: {
-        title: `${BRAND.name} - Gana Increíbles Premios`,
-        description: "Participa en rifas de productos premium por una fracción de su precio.",
+        title: brand.name,
+        description: brand.tagline || '',
         type: "website",
-        images: ["/logo.jpg"],
-      },
-      twitter: {
-        card: "summary_large_image",
-        site: BRAND.twitter_handle,
-        images: ["/logo.jpg"],
+        images: [brand.logo],
       },
     };
   }
 
-  const title = `${firstRaffle.title} - ${BRAND.name}`;
+  const title = `${firstRaffle.title} - ${brand.name}`;
   const description = firstRaffle.description || `Participa por solo RD$${firstRaffle.ticketPrice.toLocaleString()} y gana ${firstRaffle.title}`;
   const image = firstRaffle.image;
 
@@ -39,7 +39,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title,
     description,
     openGraph: {
-      title: `🎟️ ${firstRaffle.title} | ${BRAND.name}`,
+      title: `${firstRaffle.title} | ${brand.name}`,
       description: `${description} - Boletos desde RD$${firstRaffle.ticketPrice.toLocaleString()}`,
       type: "website",
       images: [
@@ -53,8 +53,7 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     twitter: {
       card: "summary_large_image",
-      site: BRAND.twitter_handle,
-      title: `🎟️ ${firstRaffle.title}`,
+      title: firstRaffle.title,
       description: `${description} - Boletos desde RD$${firstRaffle.ticketPrice.toLocaleString()}`,
       images: [image],
     },

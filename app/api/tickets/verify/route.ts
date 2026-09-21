@@ -1,8 +1,25 @@
 import { NextResponse } from 'next/server'
-import { Gestiono } from '@bitnation-dev/management/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { getOrgFromHeaders } from '@/lib/tenant'
+
+function normalizePhone(phone: string): string {
+  return phone.trim().replace(/[^\d+]/g, '')
+}
+
+function digitsOnly(phone: string): string {
+  return phone.replace(/\D/g, '')
+}
 
 export async function POST(request: Request) {
   try {
+    const org = await getOrgFromHeaders()
+    if (!org) {
+      return NextResponse.json(
+        { success: false, error: 'Organización no encontrada' },
+        { status: 404 }
+      )
+    }
+
     const { phone } = await request.json()
 
     if (!phone || typeof phone !== 'string' || phone.trim().length < 5) {
@@ -12,68 +29,89 @@ export async function POST(request: Request) {
       )
     }
 
-    // Step 1: Find the beneficiary (contact) by phone number
-    const beneficiaries = await Gestiono.getBeneficiaries({ search: phone.trim().replace(/^\+/, '') })
+    const supabase = createAdminClient()
+    const normalized = normalizePhone(phone)
+    const digits = digitsOnly(phone)
 
-    if (!beneficiaries || beneficiaries.length === 0) {
+    const { data: customers, error: customerError } = await supabase
+      .from('customers')
+      .select('id, name, whatsapp, email')
+      .eq('org_id', org.id)
+      .or(`whatsapp.eq.${normalized},whatsapp.ilike.%${digits.slice(-10)}`)
+
+    if (customerError) throw customerError
+
+    if (!customers || customers.length === 0) {
       return NextResponse.json({
         success: true,
         data: {
           contact: null,
           tickets: [],
         },
-        message: 'No se encontraron registros para este número'
+        message: 'No se encontraron registros para este número',
       })
     }
 
-    const contact = beneficiaries[0]
+    const contact = customers[0]
+    const customerIds = customers.map((c) => c.id)
 
-    // Step 2: Get all pending records (orders) for this beneficiary
-    const response = await Gestiono.v2GetPendingRecords({
-      query: {
-        type: 'ORDER',
-        // @ts-expect-error - raw is not in the SDK types yet
-        raw: "true",
-        // @ts-expect-error - beneficiaryId is not in the SDK types yet
-        beneficiaryId: String(contact.id),
-      }
-    })
+    const { data: purchases, error: purchasesError } = await supabase
+      .from('purchases')
+      .select(`
+        id,
+        quantity,
+        total_amount,
+        status,
+        submitted_at,
+        raffle_id,
+        raffles ( id, title, ticket_price ),
+        tickets ( display_number, number, status )
+      `)
+      .eq('org_id', org.id)
+      .in('customer_id', customerIds)
+      .order('submitted_at', { ascending: false })
 
-    const records = response.items || []
+    if (purchasesError) throw purchasesError
 
-    // Map records to a more friendly format for the frontend
-    const tickets = await Promise.all(records.map(async (r) => {
-      const record = await Gestiono.getPendingRecordById(r.id)
-      // @ts-expect-error - metadata is not in the SDK types yet
-      const ticketNumbers = record.elements?.map((el) => el.serialNumbers).flat() || []
-      const elements = record.elements || []
+    const statusMap: Record<string, string> = {
+      pending: 'PENDING',
+      confirmed: 'COMPLETED',
+      rejected: 'CANCELLED',
+    }
+
+    const tickets = (purchases || []).map((p) => {
+      const raffle = Array.isArray(p.raffles) ? p.raffles[0] : p.raffles
+      const ticketRows = (p.tickets || []) as { display_number: string; number: number }[]
+      const ticketNumbers = ticketRows
+        .slice()
+        .sort((a, b) => a.number - b.number)
+        .map((t) => t.display_number)
 
       return {
-        id: record.id,
-        date: record.date,
-        state: record.state,
-        amount: record.amount,
-        currency: record.currency,
-        paid: record.paid,
-        dueToPay: record.dueToPay,
-        description: record.description,
-        elements: elements.map((el) => ({
-          description: el.description || el.resourceDescription || 'Boleto de rifa',
-          quantity: el.quantity,
-          price: el.price,
-          resourceId: el.resourceId,
-        })),
+        id: p.id,
+        date: p.submitted_at,
+        state: statusMap[p.status] || p.status,
+        amount: Number(p.total_amount),
+        currency: 'DOP',
+        paid: p.status === 'confirmed' ? Number(p.total_amount) : 0,
+        dueToPay: p.status === 'pending' ? Number(p.total_amount) : 0,
+        description: raffle?.title || 'Boletos de rifa',
+        elements: [
+          {
+            description: raffle?.title || 'Boleto de rifa',
+            quantity: p.quantity,
+            price: Number(raffle?.ticket_price) || Number(p.total_amount) / p.quantity,
+            resourceId: raffle?.id,
+          },
+        ],
         ticketNumbers,
         metadata: {
-          // @ts-expect-error - metadata is not in the SDK types yet
-          name: record.metadata?.name,
-          // @ts-expect-error - metadata is not in the SDK types yet
-          status: record.metadata?.status,
-          // @ts-expect-error - metadata is not in the SDK types yet
-          submittedAt: record.metadata?.submittedAt,
+          name: contact.name,
+          status: p.status,
+          submittedAt: p.submitted_at,
         },
       }
-    }))
+    })
 
     return NextResponse.json({
       success: true,
@@ -83,7 +121,7 @@ export async function POST(request: Request) {
           name: contact.name,
         },
         tickets,
-      }
+      },
     })
   } catch (error) {
     console.error('Error verifying tickets:', error)

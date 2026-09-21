@@ -1,73 +1,131 @@
-# Welcome to your Lovable project
+# Rifalo (multi-tenant)
 
-## Project info
+Plataforma de gestión de rifas (Next.js 15) con **organizaciones** en subdominios, backend en **Supabase** y panel de administración por tenant. Empieza gratis (250 boletos/mes, sin tarjeta).
 
-**URL**: https://lovable.dev/projects/ca657edd-5b58-4af6-995e-feb427a47723
+## Stack
 
-## How can I edit this code?
+- Next.js 15 (App Router) + React 18 + TypeScript + Tailwind / shadcn
+- Supabase (Postgres, Auth, Storage)
+- SendGrid (emails)
 
-There are several ways of editing your application.
+## Arquitectura multi-tenant
 
-**Use Lovable**
+| Host | Qué muestra |
+|------|-------------|
+| `ROOT_DOMAIN` (apex) | Landing del producto + signup / login |
+| `{slug}.ROOT_DOMAIN` | Tienda pública + `/admin` de esa organización |
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/ca657edd-5b58-4af6-995e-feb427a47723) and start prompting.
+La org **cura** se crea en la migración (datos existentes de Cura tu Suerte se migran ahí).
 
-Changes made via Lovable will be committed automatically to this repo.
+## Setup local
 
-**Use your preferred IDE**
+### 1. Dependencias
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+```bash
+npm install
+```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### 2. Supabase (CLI + Docker Desktop)
 
-Follow these steps:
+```bash
+# Requiere Docker Desktop corriendo
+supabase start
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Copia las keys que imprime el comando:
+supabase status -o env
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+Crea `.env.local` (ver `.env.local.example`):
 
-# Step 3: Install the necessary dependencies.
-npm i
+```env
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key>
+SUPABASE_SERVICE_ROLE_KEY=<service_role key>
+NEXT_PUBLIC_ROOT_DOMAIN=localhost:3000
+NEXT_PUBLIC_PLATFORM_NAME=Rifalo
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+Las migraciones y el seed se aplican con `supabase start` / `supabase db reset`.
+
+### 3. Crear admin de una org existente (cura)
+
+1. Abre Studio: http://127.0.0.1:54323
+2. Authentication → Users → Add user (email + password)
+3. En SQL Editor, vincúlalo a la org:
+
+```sql
+INSERT INTO public.org_members (org_id, user_id, role)
+SELECT o.id, u.id, 'owner'
+FROM public.organizations o
+CROSS JOIN auth.users u
+WHERE o.slug = 'cura'
+  AND u.email = 'tu@email.com'
+ON CONFLICT DO NOTHING;
+```
+
+(Ya no se usa `app_metadata.role = 'admin'`.)
+
+### 4. App
+
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+- Plataforma (apex): http://localhost:3000
+- Signup: http://localhost:3000/signup
+- Tenant Cura: http://cura.localhost:3000
+- Admin Cura: http://cura.localhost:3000/admin/login
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+> **Nota:** Con la carpeta `src/`, el middleware debe vivir en [`src/middleware.ts`](src/middleware.ts) (no en la raíz).
 
-**Use GitHub Codespaces**
+Chrome resuelve `*.localhost`. Si las cookies no se comparten entre apex y subdominio en local, inicia sesión directamente en `/admin/login` del tenant.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Producción (Vercel)
 
-## What technologies are used for this project?
+1. Dominio apex + wildcard `*.tudominio.com`
+2. `NEXT_PUBLIC_ROOT_DOMAIN=tudominio.com`
+3. En Supabase Auth → Redirect URLs: `https://*.tudominio.com/**` y `https://tudominio.com/**`
+4. `supabase db push` / link al proyecto hosted
 
-This project is built with:
+## Self-serve
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+En el apex, `/signup` crea usuario Auth + `organizations` + `org_members` (owner) y redirige a `https://{slug}.{ROOT}/admin`.
 
-## How can I deploy this project?
+## Facturación (Rifalo)
 
-Simply open [Lovable](https://lovable.dev/projects/ca657edd-5b58-4af6-995e-feb427a47723) and click on Share -> Publish.
+Planes mensuales por organización (conteo de boletos en compras `pending`/`confirmed` del mes, zona `America/Santo_Domingo`):
 
-## Can I connect a custom domain to my Lovable project?
+| Plan | Precio | Límite |
+|------|--------|--------|
+| Gratis | $0 | 250 boletos/mes |
+| Plus | $20 | 50,000 boletos/mes |
+| Ilimitado | $50 | Sin límite + dominio propio + varios admins + analítica avanzada |
 
-Yes, you can!
+Configura en `.env.local` (crea los Prices mensuales en el Dashboard de Stripe):
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+```env
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PRICE_PLUS=price_...
+STRIPE_PRICE_UNLIMITED=price_...
+```
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Webhook: `POST /api/billing/webhook` (eventos `checkout.session.completed`, `customer.subscription.*`).
+
+Aplica la migración: `supabase db reset` (local) o `supabase db push`.
+
+## Admin (por organización)
+
+- **Dashboard** — pendientes, rifas activas, boletos
+- **Rifas** — crear/editar, rangos de números, estados
+- **Compras** — ver comprobante, confirmar / rechazar
+- **Cuentas** — CRUD de cuentas bancarias
+- **Ajustes** — nombre, logo, eslogan, emails (el slug no cambia)
+
+## Flujo de compra
+
+1. Cliente elige cantidad → transfiere → sube comprobante
+2. El sistema asigna números al azar (`reserved`)
+3. Admin confirma → `sold` + emails SendGrid
+4. Admin rechaza → números vuelven a `available`

@@ -1,47 +1,77 @@
 import { NextResponse } from 'next/server'
-import { Gestiono } from '@bitnation-dev/management/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { sendPurchaseSubmittedEmail, sendPurchaseReceivedCustomerEmail } from '@/lib/email'
+import { getOrgFromHeaders, getOrgBrand } from '@/lib/tenant'
+import { normalizeCheckoutFields } from '@/types/org'
 
-const DIVISION_ID = 23
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+function normalizeWhatsapp(phone: string): string {
+  return phone.trim().replace(/[^\d+]/g, '')
+}
 
 export async function POST(request: Request) {
   try {
+    const org = await getOrgFromHeaders()
+    if (!org) {
+      return NextResponse.json(
+        { success: false, error: 'Organización no encontrada' },
+        { status: 404 }
+      )
+    }
+    const brand = getOrgBrand(org)
+    const checkoutFields = normalizeCheckoutFields(org.checkout_fields)
+
     const formData = await request.formData()
 
     const voucher = formData.get('voucher') as File
-    const raffleId = formData.get('raffleId')
+    const raffleId = formData.get('raffleId') as string
     const ticketQuantity = formData.get('ticketQuantity')
     const totalAmount = formData.get('totalAmount')
     const name = formData.get('name')
     const email = formData.get('email') as string | null
     const whatsappNumber = formData.get('whatsappNumber')
-    const accountId = formData.get('accountId')
+    const accountId = formData.get('accountId') as string
 
-    // Validate required fields
-    if (!voucher || !raffleId || !ticketQuantity || !totalAmount || !name || !whatsappNumber || !accountId) {
+    if (!voucher || !raffleId || !ticketQuantity || !totalAmount || !accountId) {
       return NextResponse.json(
         { success: false, error: 'Faltan campos requeridos' },
         { status: 400 }
       )
     }
 
-    // Validate name
-    if (typeof name !== 'string' || name.trim().length < 2) {
+    if (!UUID_RE.test(raffleId) || !UUID_RE.test(accountId)) {
+      return NextResponse.json(
+        { success: false, error: 'ID inválido' },
+        { status: 400 }
+      )
+    }
+
+    if (checkoutFields.name && (typeof name !== 'string' || name.trim().length < 2)) {
       return NextResponse.json(
         { success: false, error: 'El nombre debe tener al menos 2 caracteres' },
         { status: 400 }
       )
     }
 
-    // Validate WhatsApp number
-    if (typeof whatsappNumber !== 'string') {
+    if (checkoutFields.phone && (typeof whatsappNumber !== 'string' || whatsappNumber.trim().length < 10)) {
       return NextResponse.json(
         { success: false, error: 'Número de WhatsApp inválido' },
         { status: 400 }
       )
     }
 
-    // Validate file type
+    const emailValue = typeof email === 'string' ? email.trim() : ''
+    if (checkoutFields.email) {
+      if (!emailValue || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)) {
+        return NextResponse.json(
+          { success: false, error: 'Correo electrónico inválido' },
+          { status: 400 }
+        )
+      }
+    }
+
     const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf']
     if (!validTypes.includes(voucher.type)) {
       return NextResponse.json(
@@ -50,181 +80,258 @@ export async function POST(request: Request) {
       )
     }
 
-    // Validate file size (max 5MB)
     if (voucher.size > 5 * 1024 * 1024) {
       return NextResponse.json(
         { success: false, error: 'El archivo es demasiado grande. Máximo 5MB' },
         { status: 400 }
       )
     }
-    Gestiono.errorHandler = async e => {
-      return e
-    }
 
-    // Convert file to base64
-    const arrayBuffer = await voucher.arrayBuffer()
-    const base64Data = Buffer.from(arrayBuffer).toString('base64')
+    const parsedTicketQuantity = parseInt(ticketQuantity as string, 10)
+    const parsedTotalAmount = parseFloat(totalAmount as string)
 
-    // Step 1: Upload file to S3
-    const uploadResult = await Gestiono.call<{
-      success: number,
-      file: {
-        id: number,
-        url: string,
-        public: string,
-        s3Key: string
-      }
-    }, {
-      fileName: string,
-      fileData: string, // base64 encoded file content
-      mimeType: string,
-      path?: string,
-      createFolder?: boolean
-    }>("/v1/files/base64", {
-      method: 'POST',
-      data: {
-        fileName: `${Date.now()}_${voucher.name}`,
-        fileData: base64Data,
-        mimeType: voucher.type,
-        path: 'vouchers',
-        createFolder: true
-      }
-    })
-
-    const fileMetadata = {
-      s3Key: uploadResult.file.s3Key,
-      fileName: voucher.name,
-      url: uploadResult.file.public
-    }
-
-    const parsedRaffleId = parseInt(raffleId as string)
-    const parsedTicketQuantity = parseInt(ticketQuantity as string)
-
-    // Step 2: Get available serial numbers for the raffle tickets
-    const serialNumbersResponse = await Gestiono.call<{
-      available: Array<{ serialNumber: string; id: number }>
-    }>(`/v1/resource/serial-numbers/${parsedRaffleId}`, {
-      method: 'GET',
-      query: {
-        status: 'AVAILABLE',
-        divisionId: String(DIVISION_ID)
-      }
-    })
-
-    const availableSerials = serialNumbersResponse.available || []
-
-    // Check if we have enough available serial numbers
-    if (availableSerials.length < parsedTicketQuantity) {
+    if (!Number.isFinite(parsedTicketQuantity) || parsedTicketQuantity < 1) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: `No hay suficientes boletos disponibles. Disponibles: ${availableSerials.length}, Solicitados: ${parsedTicketQuantity}` 
+        { success: false, error: 'Cantidad de boletos inválida' },
+        { status: 400 }
+      )
+    }
+
+    const supabase = createAdminClient()
+
+    const { error: quotaError } = await supabase.rpc('assert_org_ticket_quota', {
+      p_org_id: org.id,
+      p_quantity: parsedTicketQuantity,
+    })
+
+    if (quotaError) {
+      const msg = quotaError.message || ''
+      if (msg.includes('TICKET_QUOTA_EXCEEDED')) {
+        return NextResponse.json(
+          {
+            success: false,
+            code: 'TICKET_QUOTA_EXCEEDED',
+            error:
+              'Esta rifa no está aceptando compras en este momento. Intenta más tarde.',
+          },
+          { status: 402 }
+        )
+      }
+      throw quotaError
+    }
+
+    const { data: raffle, error: raffleError } = await supabase
+      .from('raffles')
+      .select('id, title, ticket_price, min_tickets, status')
+      .eq('id', raffleId)
+      .eq('org_id', org.id)
+      .eq('status', 'active')
+      .maybeSingle()
+
+    if (raffleError) throw raffleError
+    if (!raffle) {
+      return NextResponse.json(
+        { success: false, error: 'Rifa no encontrada o no disponible' },
+        { status: 404 }
+      )
+    }
+
+    const minTickets = Math.max(1, Number(raffle.min_tickets) || 1)
+    if (parsedTicketQuantity < minTickets) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `El mínimo de boletos para esta rifa es ${minTickets}`,
         },
         { status: 400 }
       )
     }
 
-    // Randomly select serial numbers for the tickets
-    const shuffledSerials = [...availableSerials].sort(() => Math.random() - 0.5)
-    const selectedSerialNumbers = shuffledSerials.slice(0, parsedTicketQuantity).map(s => s.serialNumber)
+    const { data: account, error: accountError } = await supabase
+      .from('bank_accounts')
+      .select('id')
+      .eq('id', accountId)
+      .eq('org_id', org.id)
+      .eq('is_active', true)
+      .maybeSingle()
 
-    // Step 3: Create purchase record with file metadata and serial numbers
-    const purchaseRecord = await Gestiono.postPendingRecord({
-      type: 'ORDER',
-      isSell: true,
-      currency: 'DOP',
-      divisionId: DIVISION_ID,
-      updatePrices: false,
-      createFirstInvoice: false,
-      generateTaxId: 'none',
-      taxInvoiceType: 1,
-      isInstantDelivery: true,
-      elements: [
+    if (accountError) throw accountError
+    if (!account) {
+      return NextResponse.json(
+        { success: false, error: 'Cuenta bancaria no válida' },
+        { status: 400 }
+      )
+    }
+
+    const { count: availableCount, error: countError } = await supabase
+      .from('tickets')
+      .select('id', { count: 'exact', head: true })
+      .eq('raffle_id', raffleId)
+      .eq('status', 'available')
+
+    if (countError) throw countError
+
+    if ((availableCount ?? 0) < parsedTicketQuantity) {
+      return NextResponse.json(
         {
-          description: 'Boletos de rifa',
-          unit: 'boleto',
-          quantity: parsedTicketQuantity,
-          price: parseFloat(totalAmount as string) / parsedTicketQuantity,
-          variation: '0',
-          resourceId: parsedRaffleId,
-          // @ts-expect-error - serialNumbers is not in the SDK types yet
-          serialNumbers: selectedSerialNumbers,
-        }
-      ],
-      payment: {
-        paymentMethod: 'TRANSFER',
-        accountId: parseInt(accountId as string),
-        state: "PENDING",
-        metadata: {
-          files: [fileMetadata],
-        }
-      },
-      contact: {
-        name: name.toString().trim(),
-        type: 'CLIENT',
-        contact: [
-          {
-            type: 'whatsapp',
-            data: whatsappNumber.toString().trim()
-          },
-          ...(email?.trim() ? [{
-            type: 'email' as const,
-            data: email.trim()
-          }] : [])
-        ]
-      },
-      metadata: {
-        name: name.toString().trim(),
-        email: email?.trim() || undefined,
-        whatsappNumber: whatsappNumber.toString().trim(),
-        totalAmount: parseFloat(totalAmount as string),
-        files: [fileMetadata],
-        ticketNumbers: selectedSerialNumbers,
-        status: 'pending_verification',
-        submittedAt: new Date().toISOString()
+          success: false,
+          error: `No hay suficientes boletos disponibles. Disponibles: ${availableCount ?? 0}, Solicitados: ${parsedTicketQuantity}`,
+        },
+        { status: 400 }
+      )
+    }
+
+    const whatsapp =
+      checkoutFields.phone && typeof whatsappNumber === 'string'
+        ? normalizeWhatsapp(whatsappNumber)
+        : null
+    const customerName =
+      checkoutFields.name && typeof name === 'string' ? name.trim() : null
+    const customerEmail = checkoutFields.email ? emailValue || null : null
+
+    let existingCustomer: { id: string } | null = null
+    if (whatsapp) {
+      const { data } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('org_id', org.id)
+        .eq('whatsapp', whatsapp)
+        .maybeSingle()
+      existingCustomer = data
+    } else if (customerEmail) {
+      const { data } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('org_id', org.id)
+        .eq('email', customerEmail)
+        .maybeSingle()
+      existingCustomer = data
+    }
+
+    let customerId: string
+
+    if (existingCustomer) {
+      customerId = existingCustomer.id
+      const update: Record<string, string> = {}
+      if (customerName) update.name = customerName
+      if (customerEmail) update.email = customerEmail
+      if (whatsapp) update.whatsapp = whatsapp
+      if (Object.keys(update).length > 0) {
+        await supabase.from('customers').update(update).eq('id', customerId)
       }
-    })
+    } else {
+      const { data: newCustomer, error: customerError } = await supabase
+        .from('customers')
+        .insert({
+          org_id: org.id,
+          name: customerName,
+          whatsapp,
+          email: customerEmail,
+        })
+        .select('id')
+        .single()
 
-    console.log('Voucher submission:', {
-      raffleId: parsedRaffleId,
-      ticketQuantity: parsedTicketQuantity,
-      totalAmount,
-      name,
-      email: email?.trim() || null,
-      whatsappNumber,
-      file: fileMetadata,
-      ticketNumbers: selectedSerialNumbers,
-      purchaseId: purchaseRecord.pendingRecordId
-    })
+      if (customerError) throw customerError
+      customerId = newCustomer.id
+    }
 
-    // Send email notification to admin about the new purchase
+    const ext = voucher.name.split('.').pop() || 'bin'
+    const voucherPath = `${org.id}/${raffleId}/${Date.now()}_${crypto.randomUUID()}.${ext}`
+    const arrayBuffer = await voucher.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+
+    const { error: uploadError } = await supabase.storage
+      .from('vouchers')
+      .upload(voucherPath, buffer, {
+        contentType: voucher.type,
+        upsert: false,
+      })
+
+    if (uploadError) {
+      console.error('Voucher upload error:', uploadError)
+      return NextResponse.json(
+        { success: false, error: 'Error al subir el comprobante' },
+        { status: 500 }
+      )
+    }
+
+    const { data: purchase, error: purchaseError } = await supabase
+      .from('purchases')
+      .insert({
+        org_id: org.id,
+        customer_id: customerId,
+        raffle_id: raffleId,
+        bank_account_id: accountId,
+        quantity: parsedTicketQuantity,
+        total_amount: parsedTotalAmount,
+        status: 'pending',
+        voucher_path: voucherPath,
+      })
+      .select('id, submitted_at')
+      .single()
+
+    if (purchaseError) {
+      await supabase.storage.from('vouchers').remove([voucherPath])
+      throw purchaseError
+    }
+
+    const { data: ticketNumbers, error: assignError } = await supabase.rpc(
+      'assign_random_tickets',
+      {
+        p_raffle_id: raffleId,
+        p_quantity: parsedTicketQuantity,
+        p_purchase_id: purchase.id,
+      }
+    )
+
+    if (assignError) {
+      console.error('Ticket assignment error:', assignError)
+      await supabase.from('purchases').delete().eq('id', purchase.id)
+      await supabase.storage.from('vouchers').remove([voucherPath])
+      return NextResponse.json(
+        {
+          success: false,
+          error: assignError.message?.includes('Not enough')
+            ? 'No hay suficientes boletos disponibles. Intenta con menos boletos.'
+            : 'Error al asignar boletos',
+        },
+        { status: 400 }
+      )
+    }
+
+    const numbers: string[] = ticketNumbers || []
+
+    const { data: signed } = await supabase.storage
+      .from('vouchers')
+      .createSignedUrl(voucherPath, 60 * 60 * 24 * 7)
+
     sendPurchaseSubmittedEmail({
-      customerName: name.toString().trim(),
-      customerWhatsapp: whatsappNumber.toString().trim(),
-      raffleId: parseInt(raffleId as string),
-      ticketQuantity: parseInt(ticketQuantity as string),
-      totalAmount: parseFloat(totalAmount as string),
-      purchaseId: purchaseRecord.pendingRecordId,
-      ticketNumbers: selectedSerialNumbers,
-      submittedAt: new Date().toISOString(),
-      voucherUrl: fileMetadata.url
-    }).catch(error => {
-      // Log error but don't fail the request
+      customerName: customerName || 'Cliente',
+      customerWhatsapp: whatsapp || '',
+      raffleId,
+      raffleName: raffle.title,
+      ticketQuantity: parsedTicketQuantity,
+      totalAmount: parsedTotalAmount,
+      purchaseId: purchase.id,
+      ticketNumbers: numbers,
+      submittedAt: purchase.submitted_at || new Date().toISOString(),
+      voucherUrl: signed?.signedUrl,
+      brand,
+    }).catch((error) => {
       console.error('Failed to send purchase notification email:', error)
     })
 
-    // Send confirmation email to customer if they provided an email
-    if (email?.trim()) {
+    if (customerEmail) {
       sendPurchaseReceivedCustomerEmail({
-        customerName: name.toString().trim(),
-        customerEmail: email.trim(),
-        ticketQuantity: parseInt(ticketQuantity as string),
-        totalAmount: parseFloat(totalAmount as string),
-        purchaseId: purchaseRecord.pendingRecordId,
-        ticketNumbers: selectedSerialNumbers,
-        submittedAt: new Date().toISOString()
-      }).catch(error => {
-        // Log error but don't fail the request
+        customerName: customerName || 'Cliente',
+        customerEmail,
+        ticketQuantity: parsedTicketQuantity,
+        totalAmount: parsedTotalAmount,
+        purchaseId: purchase.id,
+        ticketNumbers: numbers,
+        submittedAt: purchase.submitted_at || new Date().toISOString(),
+        brand,
+      }).catch((error) => {
         console.error('Failed to send customer confirmation email:', error)
       })
     }
@@ -233,19 +340,19 @@ export async function POST(request: Request) {
       success: true,
       message: 'Comprobante recibido exitosamente',
       data: {
-        purchaseId: purchaseRecord.pendingRecordId,
-        raffleId: parsedRaffleId,
+        purchaseId: purchase.id,
+        raffleId,
         ticketQuantity: parsedTicketQuantity,
-        ticketNumbers: selectedSerialNumbers,
-        totalAmount: parseFloat(totalAmount as string),
-        name: name.toString().trim(),
-        whatsappNumber: whatsappNumber.toString().trim(),
+        ticketNumbers: numbers,
+        totalAmount: parsedTotalAmount,
+        name: customerName,
+        whatsappNumber: whatsapp,
         status: 'pending_verification',
-        submittedAt: new Date().toISOString(),
-      }
+        submittedAt: purchase.submitted_at || new Date().toISOString(),
+      },
     })
   } catch (error) {
-    console.error('Error processing voucher:', error.response.data)
+    console.error('Error processing voucher:', error)
     return NextResponse.json(
       { success: false, error: 'Error al procesar el comprobante' },
       { status: 500 }

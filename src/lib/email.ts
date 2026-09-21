@@ -1,29 +1,41 @@
 import sgMail from '@sendgrid/mail'
 import { BRAND } from '@/lib/constants'
+import type { OrgBrand } from '@/types/org'
 
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY
-const FROM_EMAIL_ADDRESS = process.env.SENDGRID_FROM_EMAIL || `noreply@${BRAND.domain}`
-const FROM_NAME = process.env.SENDGRID_FROM_NAME || BRAND.name
-const FROM_EMAIL = {
-  email: FROM_EMAIL_ADDRESS,
-  name: FROM_NAME
-}
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || BRAND.email
-
 if (SENDGRID_API_KEY) {
   sgMail.setApiKey(SENDGRID_API_KEY)
+}
+
+type EmailBrand = Pick<OrgBrand, 'name' | 'email' | 'adminEmail' | 'domain'>
+
+function resolveBrand(brand?: EmailBrand) {
+  const name = brand?.name || process.env.SENDGRID_FROM_NAME || BRAND.name
+  const domain = brand?.domain || BRAND.domain
+  const adminEmail =
+    brand?.adminEmail || brand?.email || process.env.ADMIN_EMAIL || BRAND.email
+  return {
+    name,
+    adminEmail,
+    from: {
+      email: process.env.SENDGRID_FROM_EMAIL || `noreply@${domain}`,
+      name,
+    },
+  }
 }
 
 interface PurchaseSubmittedEmailData {
   customerName: string
   customerWhatsapp: string
-  raffleId: number
+  raffleId: string
+  raffleName?: string
   ticketQuantity: number
   totalAmount: number
-  purchaseId: number
+  purchaseId: string
   ticketNumbers?: string[]
   submittedAt: string
   voucherUrl?: string
+  brand?: EmailBrand
 }
 
 interface PurchaseReceivedCustomerEmailData {
@@ -31,22 +43,24 @@ interface PurchaseReceivedCustomerEmailData {
   customerEmail: string
   ticketQuantity: number
   totalAmount: number
-  purchaseId: number
+  purchaseId: string
   ticketNumbers?: string[]
   submittedAt: string
+  brand?: EmailBrand
 }
 
 interface PaymentApprovedEmailData {
   customerName: string
   customerWhatsapp: string
   customerEmail?: string
-  raffleId: number
+  raffleId: string
   raffleName?: string
   ticketQuantity: number
   totalAmount: number
-  purchaseId: number
+  purchaseId: string
   ticketNumbers?: string[]
   approvedAt: string
+  brand?: EmailBrand
 }
 
 export async function sendPurchaseSubmittedEmail(data: PurchaseSubmittedEmailData): Promise<boolean> {
@@ -59,13 +73,17 @@ export async function sendPurchaseSubmittedEmail(data: PurchaseSubmittedEmailDat
     customerName,
     customerWhatsapp,
     raffleId,
+    raffleName,
     ticketQuantity,
     totalAmount,
     purchaseId,
     ticketNumbers,
     submittedAt,
-    voucherUrl
+    voucherUrl,
+    brand: brandInput,
   } = data
+
+  const brand = resolveBrand(brandInput)
 
   const formattedDate = new Date(submittedAt).toLocaleString('es-DO', {
     dateStyle: 'full',
@@ -73,8 +91,8 @@ export async function sendPurchaseSubmittedEmail(data: PurchaseSubmittedEmailDat
   })
 
   const msg = {
-    to: ADMIN_EMAIL,
-    from: FROM_EMAIL,
+    to: brand.adminEmail,
+    from: brand.from,
     subject: `🎟️ Nueva Compra Pendiente - Orden #${purchaseId}`,
     html: `
       <!DOCTYPE html>
@@ -114,8 +132,8 @@ export async function sendPurchaseSubmittedEmail(data: PurchaseSubmittedEmailDat
                   <td style="padding: 8px 0; color: #0B2447; font-weight: bold;">#${purchaseId}</td>
                 </tr>
                 <tr>
-                  <td style="padding: 8px 0; color: #64748b;">Rifa ID:</td>
-                  <td style="padding: 8px 0; color: #0B2447; font-weight: bold;">${raffleId}</td>
+                  <td style="padding: 8px 0; color: #64748b;">Rifa:</td>
+                  <td style="padding: 8px 0; color: #0B2447; font-weight: bold;">${raffleName || raffleId}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; color: #64748b;">Cantidad de Boletos:</td>
@@ -151,7 +169,7 @@ export async function sendPurchaseSubmittedEmail(data: PurchaseSubmittedEmailDat
             </div>
             
             <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
-              <p style="color: #64748b; font-size: 12px; margin: 0;">Este es un mensaje automático de ${BRAND.name}</p>
+              <p style="color: #64748b; font-size: 12px; margin: 0;">Este es un mensaje automático de ${brand.name}</p>
             </div>
           </div>
         </body>
@@ -166,7 +184,7 @@ Detalles del Cliente:
 
 Detalles de la Compra:
 - Orden ID: #${purchaseId}
-- Rifa ID: ${raffleId}
+- Rifa: ${raffleName || raffleId}
 - Cantidad de Boletos: ${ticketQuantity}
 ${ticketNumbers && ticketNumbers.length > 0 ? `- Números: ${ticketNumbers.join(', ')}` : ''}
 - Monto Total: RD$ ${totalAmount.toLocaleString('es-DO')}
@@ -201,8 +219,11 @@ export async function sendPurchaseReceivedCustomerEmail(data: PurchaseReceivedCu
     totalAmount,
     purchaseId,
     ticketNumbers,
-    submittedAt
+    submittedAt,
+    brand: brandInput,
   } = data
+
+  const brand = resolveBrand(brandInput)
 
   const formattedDate = new Date(submittedAt).toLocaleString('es-DO', {
     dateStyle: 'full',
@@ -224,7 +245,7 @@ export async function sendPurchaseReceivedCustomerEmail(data: PurchaseReceivedCu
 
   const msg = {
     to: customerEmail,
-    from: FROM_EMAIL,
+    from: brand.from,
     subject: `📩 Compra Recibida - Orden #${purchaseId}`,
     html: `
       <!DOCTYPE html>
@@ -277,7 +298,7 @@ export async function sendPurchaseReceivedCustomerEmail(data: PurchaseReceivedCu
             </div>
             
             <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
-              <p style="color: #64748b; font-size: 12px; margin: 0;">Gracias por participar en ${BRAND.name}</p>
+              <p style="color: #64748b; font-size: 12px; margin: 0;">Gracias por participar en ${brand.name}</p>
               <p style="color: #64748b; font-size: 12px; margin-top: 5px;">
                 ¿Tienes preguntas? Contáctanos por WhatsApp
               </p>
@@ -302,7 +323,7 @@ Resumen de tu compra:
 
 Estado: Pendiente de verificación. Este proceso puede tomar unos minutos.
 
-Gracias por participar en ${BRAND.name}
+Gracias por participar en ${brand.name}
     `
   }
 
@@ -330,8 +351,11 @@ export async function sendPaymentApprovedEmail(data: PaymentApprovedEmailData): 
     totalAmount,
     purchaseId,
     ticketNumbers,
-    approvedAt
+    approvedAt,
+    brand: brandInput,
   } = data
+
+  const brand = resolveBrand(brandInput)
 
   if (!customerEmail) {
     console.warn('No customer email provided. Cannot send payment approved notification to customer.')
@@ -358,7 +382,7 @@ export async function sendPaymentApprovedEmail(data: PaymentApprovedEmailData): 
 
   const msg = {
     to: customerEmail,
-    from: FROM_EMAIL,
+    from: brand.from,
     subject: `✅ ¡Pago Confirmado! - Orden #${purchaseId}`,
     html: `
       <!DOCTYPE html>
@@ -411,7 +435,7 @@ export async function sendPaymentApprovedEmail(data: PaymentApprovedEmailData): 
             </div>
             
             <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
-              <p style="color: #64748b; font-size: 12px; margin: 0;">Gracias por participar en ${BRAND.name}</p>
+              <p style="color: #64748b; font-size: 12px; margin: 0;">Gracias por participar en ${brand.name}</p>
               <p style="color: #64748b; font-size: 12px; margin-top: 5px;">
                 ¿Tienes preguntas? Contáctanos por WhatsApp
               </p>
@@ -438,7 +462,7 @@ ${raffleName ? `- Rifa: ${raffleName}` : ''}
 
 ¡Buena suerte! Te notificaremos cuando se realice el sorteo.
 
-Gracias por participar en ${BRAND.name}
+Gracias por participar en ${brand.name}
     `
   }
 
@@ -467,8 +491,11 @@ export async function sendPaymentApprovedAdminEmail(data: PaymentApprovedEmailDa
     totalAmount,
     purchaseId,
     ticketNumbers,
-    approvedAt
+    approvedAt,
+    brand: brandInput,
   } = data
+
+  const brand = resolveBrand(brandInput)
 
   const formattedDate = new Date(approvedAt).toLocaleString('es-DO', {
     dateStyle: 'full',
@@ -476,8 +503,8 @@ export async function sendPaymentApprovedAdminEmail(data: PaymentApprovedEmailDa
   })
 
   const msg = {
-    to: ADMIN_EMAIL,
-    from: FROM_EMAIL,
+    to: brand.adminEmail,
+    from: brand.from,
     subject: `✅ Pago Aprobado - Orden #${purchaseId}`,
     html: `
       <!DOCTYPE html>
@@ -542,7 +569,7 @@ export async function sendPaymentApprovedAdminEmail(data: PaymentApprovedEmailDa
             </div>
             
             <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
-              <p style="color: #64748b; font-size: 12px; margin: 0;">Este es un mensaje automático de ${BRAND.name}</p>
+              <p style="color: #64748b; font-size: 12px; margin: 0;">Este es un mensaje automático de ${brand.name}</p>
             </div>
           </div>
         </body>

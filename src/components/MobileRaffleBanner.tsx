@@ -13,6 +13,11 @@ export default function MobileRaffleBanner({
   raffle,
   onPurchaseClick,
 }: MobileRaffleBannerProps) {
+  const pct =
+    raffle.totalTickets > 0
+      ? Math.min((raffle.soldTickets / raffle.totalTickets) * 100, 100)
+      : 0;
+
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-background border-t border-card-border shadow-lg">
       <div className="flex items-center gap-3 p-3">
@@ -32,13 +37,24 @@ export default function MobileRaffleBanner({
         </div>
 
         {/* Raffle Info */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 space-y-1">
           <h3 className="text-sm font-bold text-foreground truncate">
             {raffle.title}
           </h3>
           <p className="text-xs text-muted-foreground">
             RD${raffle.ticketPrice.toLocaleString()} por boleto
           </p>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full bg-secondary transition-all duration-500"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+              {pct.toFixed(1)}%
+            </span>
+          </div>
         </div>
 
         {/* Purchase Button */}

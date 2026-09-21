@@ -29,3 +29,10 @@ out
 *.sln
 *.sw?
 .vercel
+.env
+.env.local
+.env*.local
+
+# Supabase
+supabase/.branches
+supabase/.temp

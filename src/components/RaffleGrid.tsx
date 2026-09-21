@@ -124,15 +124,8 @@ const RaffleGrid = () => {
             {raffles.map((raffle) => (
               <RaffleCard
                 key={raffle.id}
-                id={raffle.id.toString()}
-                title={raffle.title}
-                image={raffle.image}
-                description={raffle.description}
-                ticketPrice={raffle.ticketPrice}
-                totalTickets={raffle.totalTickets}
-                soldTickets={raffle.soldTickets}
-                timeLeft={raffle.timeLeft}
-                featured={raffle.featured}
+                raffle={raffle}
+                onPurchase={() => handlePurchaseClick(raffle)}
               />
             ))}
           </div>
@@ -200,6 +193,7 @@ const RaffleGrid = () => {
               raffleId={selectedRaffle.id}
               ticketPrice={selectedRaffle.ticketPrice}
               availableTickets={selectedRaffle.totalTickets - selectedRaffle.soldTickets}
+              minTickets={selectedRaffle.minTickets}
             />
           )}
         </>

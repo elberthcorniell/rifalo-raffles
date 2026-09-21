@@ -1,84 +1,40 @@
 import { NextResponse } from 'next/server'
-import { Gestiono } from '@bitnation-dev/management/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { getOrgFromHeaders } from '@/lib/tenant'
+import type { BankAccount } from '@/types/raffle'
 
-export interface BankAccount {
-  id: number
-  name: string
-  bank: string
-  accountNumber: string
-  accountType: string
-  currency: string
-  holderName?: string
-  cedula?: string
-}
-
-const enrichedData: Record<string, { bank: string; accountType: string; holderName?: string; cedula?: string }> = {
-  "40099180013": {
-    bank: "Banco BHD",
-    accountType: "Cuenta de ahorros",
-    holderName: "Adilssa Santos",
-  },
-  "836405746": {
-    bank: "Banco Popular",
-    accountType: "Cuenta corriente",
-    holderName: "Adilssa Santos",
-  },
-  "9607543272": {
-    bank: "Banreservas",
-    accountType: "Cuenta corriente",
-    holderName: "Adilssa Santos",
-  },
-  "1000612991": {
-    bank: "Qik",
-    accountType: "Cuenta de ahorros",
-    holderName: "Adilssa Santos",
-  },
-  "https://www.paypal.me/adilssasantos": {
-    bank: "PayPal",
-    accountType: "PayPal",
-    holderName: "Adilssa Santos",
-  },
-  "100100256895": {
-    bank: "Asociación Cibao",
-    accountType: "Cuenta de ahorros",
-    holderName: "Adilssa Santos",
-  },
-}
+export type { BankAccount }
 
 export async function GET() {
   try {
-    // @ts-expect-error
-    const accounts: {
-      id: number
-      name: string
-      bank: string
-      accountNumber: string
-      type: string
-      currency: string
-    }[] = await Gestiono.getAccounts()
+    const org = await getOrgFromHeaders()
+    if (!org) {
+      return NextResponse.json(
+        { success: false, error: 'Organización no encontrada' },
+        { status: 404 }
+      )
+    }
 
-    const filteredAccounts = accounts.filter((account) => !!account.accountNumber)
+    const supabase = createAdminClient()
+    const { data, error } = await supabase
+      .from('bank_accounts')
+      .select('*')
+      .eq('org_id', org.id)
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
 
-    
+    if (error) throw error
 
-    const bankAccounts: BankAccount[] = filteredAccounts.map((account) => {
-      const enriched = enrichedData[account.accountNumber] || {
-        bank: '',
-        accountType: '',
-        holderName: '',
-        cedula: '',
-      }
-      return {
-        id: account.id,
-        name: account.name || '',
-        bank: enriched.bank || '',
-        accountNumber: account.accountNumber || '',
-        accountType: enriched.accountType || '',
-        currency: account.currency || 'DOP',
-        holderName: enriched.holderName,
-        cedula: enriched.cedula,
-      }
-    })
+    const bankAccounts: BankAccount[] = (data || []).map((account) => ({
+      id: account.id,
+      name: account.name || '',
+      bank: account.bank || '',
+      accountNumber: account.account_number || '',
+      accountType: account.account_type || '',
+      currency: account.currency || 'DOP',
+      holderName: account.holder_name || undefined,
+      cedula: account.cedula || undefined,
+    }))
 
     return NextResponse.json({
       success: true,

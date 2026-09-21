@@ -38,6 +38,7 @@ const StickyRaffleBanner = () => {
         raffleId={raffle.id}
         ticketPrice={raffle.ticketPrice}
         availableTickets={raffle.totalTickets - raffle.soldTickets}
+        minTickets={raffle.minTickets}
       />
     </>
   );

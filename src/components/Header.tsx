@@ -5,10 +5,11 @@ import { Menu, Ticket } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { BRAND } from "@/lib/constants";
+import { useOrgBrand } from "@/components/OrgBrandProvider";
 
 const Header = () => {
   const router = useRouter();
+  const brand = useOrgBrand();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handleVerifyTickets = () => {
@@ -46,8 +47,8 @@ const Header = () => {
           {/* Mobile Logo */}
           <div className="flex-1 flex justify-center">
             <img 
-              src="/logo.jpg"
-              alt={`${BRAND.name} Logo`}
+              src={brand.logo}
+              alt={`${brand.name} Logo`}
               className="h-20 w-auto animate-fade-in"
             />
           </div>
@@ -64,8 +65,8 @@ const Header = () => {
           {/* Centered Logo */}
           <div className="flex justify-center items-center flex-1">
             <img 
-              src="/logo.jpg"
-              alt={`${BRAND.name} Logo`}
+              src={brand.logo}
+              alt={`${brand.name} Logo`}
               className="h-16 w-auto animate-fade-in"
             />
           </div>

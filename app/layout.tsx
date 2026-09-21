@@ -1,20 +1,27 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { Providers } from "./providers";
 import { ClientProviders } from "./client-providers";
 import "./globals.css";
 
-import 'react-international-phone/style.css'
+import "react-international-phone/style.css";
 
-import { BRAND } from "@/lib/constants";
+import { PLATFORM } from "@/lib/constants";
+import { getOrgFromHeaders, getOrgBrand } from "@/lib/tenant";
+import { PATHNAME_HEADER } from "@/lib/tenant-host";
+import { getBrandCssVars } from "@/lib/colors";
 
 export const metadata: Metadata = {
   title: {
-    default: `${BRAND.name} - Plataforma de Rifas en República Dominicana`,
-    template: `%s | ${BRAND.name}`,
+    default: `${PLATFORM.name} — Gestión de rifas`,
+    template: `%s | ${PLATFORM.name}`,
   },
-  description: "Participa en rifas de productos premium. Plataforma segura y transparente en República Dominicana.",
-  authors: [{ name: BRAND.name }],
-  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || BRAND.url),
+  description: PLATFORM.tagline,
+  authors: [{ name: PLATFORM.name }],
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_BASE_URL ||
+      `http://${process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost:3000"}`
+  ),
 };
 
 export const viewport: Viewport = {
@@ -24,15 +31,37 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
-export default function RootLayout({
+function isStorefrontPath(pathname: string) {
+  return (
+    !!pathname &&
+    !pathname.startsWith("/admin") &&
+    !pathname.startsWith("/platform")
+  );
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const org = await getOrgFromHeaders();
+  const brand = org ? getOrgBrand(org) : null;
+  const pathname = (await headers()).get(PATHNAME_HEADER) || "";
+  const applyDark =
+    !!brand && isStorefrontPath(pathname) && brand.theme === "dark";
+  const brandStyle = brand
+    ? getBrandCssVars(brand.primaryColor, brand.secondaryColor)
+    : undefined;
+
   return (
-    <html lang="es">
+    <html
+      lang="es"
+      className={applyDark ? "dark" : undefined}
+      style={brandStyle}
+      suppressHydrationWarning
+    >
       <body>
-        <Providers>
+        <Providers initialOrg={org} initialBrand={brand}>
           <ClientProviders />
           {children}
         </Providers>
