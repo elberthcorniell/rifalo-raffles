@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server'
 import { requireOrgAdmin } from '@/lib/supabase/require-admin'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { effectiveOrgPlan } from '@/lib/billing'
 
+type AdminClient = ReturnType<typeof createAdminClient>
+
 async function findUserIdByEmail(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  admin: any,
+  admin: AdminClient,
   email: string
 ): Promise<string | null> {
   const normalized = email.trim().toLowerCase()
