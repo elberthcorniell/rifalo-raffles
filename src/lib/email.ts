@@ -1,5 +1,5 @@
 import sgMail from '@sendgrid/mail'
-import { BRAND } from '@/lib/constants'
+import { PLATFORM, getRootDomain } from '@/lib/constants'
 import type { OrgBrand } from '@/types/org'
 
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY
@@ -10,10 +10,10 @@ if (SENDGRID_API_KEY) {
 type EmailBrand = Pick<OrgBrand, 'name' | 'email' | 'adminEmail' | 'domain'>
 
 function resolveBrand(brand?: EmailBrand) {
-  const name = brand?.name || process.env.SENDGRID_FROM_NAME || BRAND.name
-  const domain = brand?.domain || BRAND.domain
+  const name = brand?.name || process.env.SENDGRID_FROM_NAME || PLATFORM.name
+  const domain = brand?.domain || getRootDomain()
   const adminEmail =
-    brand?.adminEmail || brand?.email || process.env.ADMIN_EMAIL || BRAND.email
+    brand?.adminEmail || brand?.email || process.env.ADMIN_EMAIL || PLATFORM.email
   return {
     name,
     adminEmail,

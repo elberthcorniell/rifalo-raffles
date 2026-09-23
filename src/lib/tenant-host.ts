@@ -1,4 +1,4 @@
-import { getRootDomain, getTenantUrl } from '@/lib/constants'
+import { getRootDomain, getRootDomains, getTenantUrl } from '@/lib/constants'
 import {
   DEFAULT_ORG_THEME,
   DEFAULT_PRIMARY_COLOR,
@@ -21,16 +21,25 @@ export interface ResolvedHost {
   host: string
 }
 
-export function parseHost(hostname: string, rootDomain: string = getRootDomain()): ResolvedHost {
-  const host = hostname.split(':')[0].toLowerCase()
-  const rootHost = rootDomain.split(':')[0].toLowerCase()
+function hostWithoutPort(value: string): string {
+  return value.split(':')[0].trim().toLowerCase()
+}
 
-  if (
-    host === rootHost ||
-    host === `www.${rootHost}` ||
-    host === '127.0.0.1' ||
-    (rootHost === 'localhost' && host === 'localhost')
-  ) {
+function rootHostsFrom(rootDomain?: string | string[]): string[] {
+  const raw = rootDomain == null ? getRootDomains() : Array.isArray(rootDomain) ? rootDomain : [rootDomain]
+  const hosts = raw.flatMap((domain) =>
+    domain
+      .split(',')
+      .map((part) => hostWithoutPort(part))
+      .filter(Boolean)
+  )
+  return hosts.length > 0 ? hosts : ['localhost']
+}
+
+export function parseHost(hostname: string, rootDomain?: string | string[]): ResolvedHost {
+  const host = hostWithoutPort(hostname)
+
+  if (host === '127.0.0.1') {
     return { kind: 'apex', slug: null, host }
   }
 
@@ -41,13 +50,32 @@ export function parseHost(hostname: string, rootDomain: string = getRootDomain()
     }
   }
 
-  if (host.endsWith(`.${rootHost}`)) {
-    const slug = host.slice(0, -(rootHost.length + 1))
-    if (slug && !slug.includes('.')) {
-      return { kind: 'tenant', slug, host }
+  let best: { kind: HostKind; slug: string | null; score: number } | null = null
+
+  for (const rootHost of rootHostsFrom(rootDomain)) {
+    const isApex =
+      host === rootHost ||
+      host === `www.${rootHost}` ||
+      (rootHost === 'localhost' && host === 'localhost')
+
+    if (isApex) {
+      if (!best || rootHost.length > best.score) {
+        best = { kind: 'apex', slug: null, score: rootHost.length }
+      }
+      continue
+    }
+
+    if (host.endsWith(`.${rootHost}`)) {
+      const slug = host.slice(0, -(rootHost.length + 1))
+      if (slug && !slug.includes('.')) {
+        if (!best || rootHost.length > best.score) {
+          best = { kind: 'tenant', slug, score: rootHost.length }
+        }
+      }
     }
   }
 
+  if (best) return { kind: best.kind, slug: best.slug, host }
   return { kind: 'unknown', slug: null, host }
 }
 

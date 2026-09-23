@@ -40,8 +40,22 @@ export const RESERVED_SLUGS = [
   'docs',
 ] as const
 
+function splitRootDomains(raw: string): string[] {
+  const domains = raw
+    .split(',')
+    .map((domain) => domain.trim())
+    .filter(Boolean)
+  return domains.length > 0 ? domains : ['localhost:3000']
+}
+
+/** Every apex domain this deployment serves. The first entry is canonical. */
+export function getRootDomains(): string[] {
+  return splitRootDomains(process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'localhost:3000')
+}
+
+/** Canonical domain used for generated links and displayed URLs. */
 export function getRootDomain(): string {
-  return process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'localhost:3000'
+  return getRootDomains()[0]
 }
 
 export function isLocalRootDomain(root: string = getRootDomain()): boolean {
@@ -81,22 +95,3 @@ export function isValidSlug(slug: string): boolean {
   if ((RESERVED_SLUGS as readonly string[]).includes(slug)) return false
   return /^[a-z0-9]([a-z0-9-]{1,30}[a-z0-9])?$/.test(slug)
 }
-
-/** @deprecated Use getOrgBrand / PLATFORM. Kept for gradual migration. */
-export const BRAND = {
-  name: 'Cura tu Suerte',
-  domain: 'curatusuerte.do',
-  url: 'https://curatusuerte.do',
-  tagline:
-    'La plataforma de rifas más emocionante de República Dominicana. ¡Cura tu suerte con nosotros!',
-  email: 'info@curatusuerte.do',
-  phone: '809-000-0000',
-  location: 'República Dominicana',
-  social: {
-    facebook: '#',
-    instagram: '#',
-    twitter: '#',
-  },
-  copyright: `© ${new Date().getFullYear()} Cura tu Suerte`,
-  twitter_handle: '@curatusuerte',
-} as const

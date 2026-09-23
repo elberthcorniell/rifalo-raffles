@@ -11,7 +11,7 @@ import {
 import { usePathname } from 'next/navigation'
 import type { OrgBrand, Organization } from '@/types/org'
 import { DEFAULT_ORG_THEME, DEFAULT_PRIMARY_COLOR, DEFAULT_SECONDARY_COLOR } from '@/types/org'
-import { BRAND } from '@/lib/constants'
+import { PLATFORM, getPlatformUrl, getRootDomain } from '@/lib/constants'
 import { getBrandCssVars } from '@/lib/colors'
 
 interface OrgContextValue {
@@ -23,19 +23,19 @@ interface OrgContextValue {
 }
 
 const fallbackBrand: OrgBrand = {
-  name: BRAND.name,
-  slug: 'cura',
-  url: BRAND.url,
-  domain: BRAND.domain,
-  tagline: BRAND.tagline,
-  email: BRAND.email,
-  phone: BRAND.phone,
+  name: PLATFORM.name,
+  slug: '',
+  url: getPlatformUrl(),
+  domain: getRootDomain(),
+  tagline: PLATFORM.tagline,
+  email: PLATFORM.email,
+  phone: '',
   logo: '/logo.jpg',
-  adminEmail: BRAND.email,
-  copyright: BRAND.copyright,
-  twitter_handle: BRAND.twitter_handle,
-  social: { ...BRAND.social },
-  location: BRAND.location,
+  adminEmail: PLATFORM.email,
+  copyright: PLATFORM.copyright,
+  twitter_handle: '',
+  social: { facebook: '#', instagram: '#', twitter: '#' },
+  location: '',
   primaryColor: DEFAULT_PRIMARY_COLOR,
   secondaryColor: DEFAULT_SECONDARY_COLOR,
   theme: DEFAULT_ORG_THEME,

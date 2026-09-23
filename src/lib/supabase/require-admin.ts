@@ -46,8 +46,3 @@ export async function requireOrgAdmin(): Promise<AuthSuccess | AuthFailure> {
 
   return { user, org, supabase, admin: createAdminClient() }
 }
-
-/** @deprecated Use requireOrgAdmin */
-export async function requireAdmin() {
-  return requireOrgAdmin()
-}

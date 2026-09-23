@@ -6,7 +6,7 @@ import "./globals.css";
 
 import "react-international-phone/style.css";
 
-import { PLATFORM } from "@/lib/constants";
+import { PLATFORM, getPlatformUrl } from "@/lib/constants";
 import { getOrgFromHeaders, getOrgBrand } from "@/lib/tenant";
 import { PATHNAME_HEADER } from "@/lib/tenant-host";
 import { getBrandCssVars } from "@/lib/colors";
@@ -18,10 +18,7 @@ export const metadata: Metadata = {
   },
   description: PLATFORM.tagline,
   authors: [{ name: PLATFORM.name }],
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_BASE_URL ||
-      `http://${process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost:3000"}`
-  ),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || getPlatformUrl()),
 };
 
 export const viewport: Viewport = {
