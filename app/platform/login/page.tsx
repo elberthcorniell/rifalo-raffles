@@ -1,18 +1,21 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getSessionHandoffUrl } from '@/lib/auth-handoff'
 import { authErrorMessage } from '@/lib/auth-errors'
 import { PLATFORM } from '@/lib/constants'
+import { isSuperadminEmail, safeSuperadminNext } from '@/lib/superadmin'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
 import { Loader2, Sparkles } from 'lucide-react'
 
-export default function PlatformLoginPage() {
+function PlatformLoginForm() {
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -32,6 +35,12 @@ export default function PlatformLoginPage() {
 
       if (signError) {
         setError(authErrorMessage(signError))
+        return
+      }
+
+      const next = safeSuperadminNext(searchParams.get('next'))
+      if (next && isSuperadminEmail(signData.user?.email || email)) {
+        window.location.href = next
         return
       }
 
@@ -113,5 +122,13 @@ export default function PlatformLoginPage() {
         </p>
       </Card>
     </div>
+  )
+}
+
+export default function PlatformLoginPage() {
+  return (
+    <Suspense>
+      <PlatformLoginForm />
+    </Suspense>
   )
 }

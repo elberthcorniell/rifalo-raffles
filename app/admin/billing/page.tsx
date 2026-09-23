@@ -24,6 +24,8 @@ interface PlanCard {
 
 interface BillingData {
   plan: OrgPlan
+  purchasedPlan: OrgPlan
+  planOverride: OrgPlan | null
   quota: Quota
   stripeCustomerId: string | null
   stripeSubscriptionId: string | null
@@ -171,6 +173,11 @@ export default function AdminBillingPage() {
               <span className="font-medium capitalize text-[#0B2447]">
                 {data?.plan || 'free'}
               </span>
+              {data?.planOverride
+                ? ` · overwrite · comprado ${data.purchasedPlan}`
+                : data?.purchasedPlan
+                  ? ` · comprado ${data.purchasedPlan}`
+                  : ''}
               {data?.stripeSubscriptionStatus
                 ? ` · Stripe: ${data.stripeSubscriptionStatus}`
                 : ''}
@@ -206,6 +213,7 @@ export default function AdminBillingPage() {
       <div className="grid md:grid-cols-3 gap-4">
         {(data?.plans || []).map((plan) => {
           const isCurrent = data?.plan === plan.id
+          const isPurchased = data?.purchasedPlan === plan.id
           const isPaid = plan.id !== 'free'
           return (
             <Card
@@ -220,6 +228,11 @@ export default function AdminBillingPage() {
                   {isCurrent && (
                     <span className="text-xs rounded-full bg-[#1976D2]/10 text-[#1976D2] px-2 py-0.5">
                       Actual
+                    </span>
+                  )}
+                  {isPurchased && !isCurrent && (
+                    <span className="text-xs rounded-full bg-slate-100 text-slate-600 px-2 py-0.5">
+                      Comprado
                     </span>
                   )}
                 </div>
@@ -247,13 +260,13 @@ export default function AdminBillingPage() {
                       ? 'bg-slate-200 text-slate-600 hover:bg-slate-200'
                       : 'bg-[#1976D2] hover:bg-[#1565C0]'
                   }
-                  disabled={isCurrent || !!actionLoading}
+                  disabled={isPurchased || !!actionLoading}
                   onClick={() => startCheckout(plan.id as 'plus' | 'unlimited')}
                 >
                   {actionLoading === plan.id ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : isCurrent ? (
-                    'Plan actual'
+                  ) : isPurchased ? (
+                    'Plan comprado'
                   ) : atLimit ? (
                     'Mejorar para seguir vendiendo'
                   ) : (

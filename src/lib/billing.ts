@@ -15,6 +15,22 @@ export function normalizeOrgPlan(value: unknown): OrgPlan {
   return 'free'
 }
 
+export function parseOrgPlanOverride(value: unknown): OrgPlan | null {
+  if (value === 'free' || value === 'plus' || value === 'unlimited') return value
+  return null
+}
+
+export function purchasedOrgPlan(org: { plan?: unknown }): OrgPlan {
+  return normalizeOrgPlan(org.plan)
+}
+
+export function effectiveOrgPlan(org: {
+  plan?: unknown
+  plan_override?: unknown
+}): OrgPlan {
+  return parseOrgPlanOverride(org.plan_override) ?? purchasedOrgPlan(org)
+}
+
 export function planTicketLimit(plan: OrgPlan): number | null {
   return PLAN_LIMITS[plan]
 }

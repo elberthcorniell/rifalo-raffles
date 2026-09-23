@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireOrgAdmin } from '@/lib/supabase/require-admin'
-import { normalizeOrgPlan } from '@/lib/billing'
+import { effectiveOrgPlan } from '@/lib/billing'
 
 async function findUserIdByEmail(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -47,7 +47,7 @@ export async function GET() {
   if ('error' in auth) return auth.error
 
   const { admin, org } = auth
-  const plan = normalizeOrgPlan(org.plan)
+  const plan = effectiveOrgPlan(org)
 
   const { data: members, error } = await admin
     .from('org_members')
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
   if ('error' in auth) return auth.error
 
   const { admin, org } = auth
-  const plan = normalizeOrgPlan(org.plan)
+  const plan = effectiveOrgPlan(org)
 
   if (plan !== 'unlimited') {
     return NextResponse.json(

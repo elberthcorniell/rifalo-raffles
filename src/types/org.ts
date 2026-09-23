@@ -47,6 +47,7 @@ export interface Organization {
   instagram_url: string | null
   twitter_url: string | null
   plan?: OrgPlan
+  plan_override?: OrgPlan | null
   stripe_customer_id?: string | null
   stripe_subscription_id?: string | null
   stripe_subscription_status?: string | null

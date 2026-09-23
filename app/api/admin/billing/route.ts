@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireOrgAdmin } from '@/lib/supabase/require-admin'
-import { normalizeOrgPlan, parseQuotaRow } from '@/lib/billing'
+import { effectiveOrgPlan, parseOrgPlanOverride, parseQuotaRow, purchasedOrgPlan } from '@/lib/billing'
 import { PLAN_LIMITS, PLAN_PRICES, type OrgPlan } from '@/lib/constants'
 
 export async function GET() {
@@ -21,12 +21,16 @@ export async function GET() {
   }
 
   const quota = parseQuotaRow(quotaRaw)
-  const plan = normalizeOrgPlan(org.plan ?? quota.plan)
+  const plan = effectiveOrgPlan(org)
+  const purchasedPlan = purchasedOrgPlan(org)
+  const planOverride = parseOrgPlanOverride(org.plan_override)
 
   return NextResponse.json({
     success: true,
     data: {
       plan,
+      purchasedPlan,
+      planOverride,
       quota,
       limits: PLAN_LIMITS,
       prices: PLAN_PRICES,

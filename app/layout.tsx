@@ -35,7 +35,8 @@ function isStorefrontPath(pathname: string) {
   return (
     !!pathname &&
     !pathname.startsWith("/admin") &&
-    !pathname.startsWith("/platform")
+    !pathname.startsWith("/platform") &&
+    !pathname.startsWith("/superadmin")
   );
 }
 

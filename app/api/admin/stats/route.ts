@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server'
 import { requireOrgAdmin } from '@/lib/supabase/require-admin'
-import { normalizeOrgPlan } from '@/lib/billing'
+import { effectiveOrgPlan } from '@/lib/billing'
 
 export async function GET() {
   const auth = await requireOrgAdmin()
   if ('error' in auth) return auth.error
 
   const { admin, org } = auth
-  const plan = normalizeOrgPlan(org.plan)
+  const plan = effectiveOrgPlan(org)
 
   const raffleIdsResult = await admin.from('raffles').select('id').eq('org_id', org.id)
   const raffleIds = (raffleIdsResult.data || []).map((r) => r.id)

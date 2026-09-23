@@ -7,6 +7,8 @@ import {
 } from '@/lib/constants'
 import { orgAdminPath, ONBOARDING_PATH } from '@/lib/onboarding'
 import { ORG_ID_HEADER, ORG_SLUG_HEADER, PATHNAME_HEADER, parseHost } from '@/lib/tenant-host'
+import { isSuperadminEmail, isSuperadminPath } from '@/lib/superadmin'
+import { effectiveOrgPlan } from '@/lib/billing'
 
 function createServiceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -56,6 +58,7 @@ export async function updateSession(request: NextRequest) {
 
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    let user: { email?: string | null } | null = null
     if (url && anonKey) {
       const supabase = createServerClient(url, anonKey, {
         cookies: {
@@ -73,7 +76,12 @@ export async function updateSession(request: NextRequest) {
           },
         },
       })
-      await supabase.auth.getUser()
+      try {
+        const { data } = await supabase.auth.getUser()
+        user = data.user
+      } catch {
+        user = null
+      }
     }
 
     // Rewrite apex home and auth pages under /platform (URL stays / , /signup, /login)
@@ -91,6 +99,18 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.rewrite(rewriteUrl, {
         request: { headers: requestHeaders },
       })
+    }
+
+    if (isSuperadminPath(pathname)) {
+      if (!user) {
+        return tenantRedirect(request, '/login', { next: '/superadmin' })
+      }
+      if (!isSuperadminEmail(user.email)) {
+        const rewriteUrl = request.nextUrl.clone()
+        rewriteUrl.pathname = '/platform/not-found'
+        return NextResponse.rewrite(rewriteUrl)
+      }
+      return supabaseResponse
     }
 
     // Block tenant-only routes on apex
@@ -200,7 +220,12 @@ export async function updateSession(request: NextRequest) {
     }
 
     // Block platform-only paths on tenant
-    if (pathname.startsWith('/platform') || pathname === '/signup' || pathname === '/login') {
+    if (
+      pathname.startsWith('/platform') ||
+      pathname.startsWith('/superadmin') ||
+      pathname === '/signup' ||
+      pathname === '/login'
+    ) {
       return new NextResponse('Not Found', { status: 404 })
     }
 
@@ -217,12 +242,11 @@ export async function updateSession(request: NextRequest) {
     const hostOnly = resolved.host.toLowerCase()
     const { data: orgByDomain } = await service
       .from('organizations')
-      .select('id, slug, plan, custom_domain, onboarding_completed_at')
+      .select('id, slug, plan, plan_override, custom_domain, onboarding_completed_at')
       .eq('custom_domain', hostOnly)
-      .eq('plan', 'unlimited')
       .maybeSingle()
 
-    if (!orgByDomain) {
+    if (!orgByDomain || effectiveOrgPlan(orgByDomain) !== 'unlimited') {
       return new NextResponse('Not Found', { status: 404 })
     }
 
@@ -298,7 +322,12 @@ export async function updateSession(request: NextRequest) {
       }
     }
 
-    if (pathname.startsWith('/platform') || pathname === '/signup' || pathname === '/login') {
+    if (
+      pathname.startsWith('/platform') ||
+      pathname.startsWith('/superadmin') ||
+      pathname === '/signup' ||
+      pathname === '/login'
+    ) {
       return new NextResponse('Not Found', { status: 404 })
     }
 

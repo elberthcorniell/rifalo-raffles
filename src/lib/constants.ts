@@ -35,6 +35,7 @@ export const RESERVED_SLUGS = [
   'billing',
   'dashboard',
   'platform',
+  'superadmin',
   'static',
   'assets',
   'cdn',

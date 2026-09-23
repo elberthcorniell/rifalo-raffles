@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireOrgAdmin } from '@/lib/supabase/require-admin'
+import { effectiveOrgPlan } from '@/lib/billing'
 import { getOrgBrand } from '@/lib/tenant'
 import { isHexColor, normalizeHexColor } from '@/lib/colors'
 import {
@@ -17,7 +18,7 @@ export async function GET() {
   return NextResponse.json({
     success: true,
     data: {
-      org,
+      org: { ...org, plan: effectiveOrgPlan(org) },
       brand: getOrgBrand(org),
     },
   })
@@ -83,8 +84,8 @@ export async function PATCH(request: Request) {
   }
 
   if (body.customDomain !== undefined) {
-    const { normalizeOrgPlan } = await import('@/lib/billing')
-    const plan = normalizeOrgPlan(org.plan)
+    const { effectiveOrgPlan } = await import('@/lib/billing')
+    const plan = effectiveOrgPlan(org)
     if (plan !== 'unlimited' && body.customDomain) {
       return NextResponse.json(
         {
