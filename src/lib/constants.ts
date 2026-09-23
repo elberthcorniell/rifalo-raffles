@@ -1,10 +1,8 @@
 export const PLATFORM = {
-  name: process.env.NEXT_PUBLIC_PLATFORM_NAME || 'Rifalo',
-  tagline:
-    process.env.NEXT_PUBLIC_PLATFORM_TAGLINE ||
-    'Haz tus rifas gratis. Sin tarjeta. Tu propio sitio y panel de administración.',
-  email: process.env.NEXT_PUBLIC_PLATFORM_EMAIL || 'hola@rifalo.com',
-  copyright: `© ${new Date().getFullYear()} ${process.env.NEXT_PUBLIC_PLATFORM_NAME || 'Rifalo'}`,
+  name: 'Rifalo',
+  tagline: 'Haz tus rifas gratis. Sin tarjeta. Tu propio sitio y panel de administración.',
+  email: 'hola@rifalo.com',
+  copyright: `© ${new Date().getFullYear()} Rifalo`,
 } as const
 
 export type OrgPlan = 'free' | 'plus' | 'unlimited'
