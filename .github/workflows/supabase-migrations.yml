@@ -19,16 +19,15 @@ jobs:
       SUPABASE_PROJECT_ID: cpdnivuqjyzozfwbgvdq
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v3
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - uses: supabase/setup-cli@v3
         with:
           version: latest
 
-      - name: Link project
-        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
-
-      - name: Push migrations
-        run: supabase db push
+      - run: supabase link --project-ref $SUPABASE_PROJECT_ID
+      - run: supabase db push
