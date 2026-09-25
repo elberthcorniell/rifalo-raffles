@@ -207,7 +207,65 @@ export default function SuperadminOrgsPage() {
         <p className="text-sm text-red-600 bg-red-50 rounded-md px-3 py-2">{actionError}</p>
       )}
 
-      <div className="rounded-lg border bg-white min-w-0 max-h-[calc(100vh-14rem)] overflow-auto">
+      <div className="space-y-3 md:hidden">
+        {loading && <p className="text-sm text-muted-foreground">Cargando...</p>}
+        {!loading && orgs.length === 0 && (
+          <p className="rounded-lg border bg-white px-4 py-8 text-center text-sm text-muted-foreground">
+            No hay organizaciones.
+          </p>
+        )}
+        {!loading &&
+          orgs.map((org) => (
+            <article key={org.id} className="rounded-lg border bg-white p-4 space-y-3">
+              <div>
+                <a href={org.url} target="_blank" rel="noreferrer" className="font-medium hover:underline">
+                  {org.name}
+                </a>
+                <p className="text-xs text-muted-foreground break-all">
+                  {org.slug}
+                  {org.customDomain ? ` · ${org.customDomain}` : ''}
+                </p>
+                {org.email && <p className="text-xs text-muted-foreground break-all">{org.email}</p>}
+                {!org.onboardingCompleted && (
+                  <Badge variant="outline" className="mt-1">
+                    Onboarding pendiente
+                  </Badge>
+                )}
+              </div>
+              <select
+                className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                value={org.planOverride ?? ''}
+                disabled={savingId === org.id}
+                onChange={(e) => setPlanOverride(org.id, e.target.value as OrgPlan | '')}
+              >
+                <option value="">Comprado · {PLAN_LABEL[org.purchasedPlan]}</option>
+                <option value="free">Overwrite · Gratis</option>
+                <option value="plus">Overwrite · Plus</option>
+                <option value="unlimited">Overwrite · Ilimitado</option>
+              </select>
+              <UsageCell used={org.usage.used} limit={org.usage.limit} />
+              <p className="text-xs text-muted-foreground">
+                {PLAN_LABEL[org.plan]} · Stripe {org.stripeStatus || '—'} · {org.raffleCount} rifas ·{' '}
+                {org.memberCount} miembros · {formatDate(org.createdAt)}
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => openAdmin(org.id)}
+                disabled={openingId === org.id}
+              >
+                {openingId === org.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  'Abrir admin'
+                )}
+              </Button>
+            </article>
+          ))}
+      </div>
+
+      <div className="hidden rounded-lg border bg-white min-w-0 max-h-[calc(100vh-14rem)] overflow-auto md:block">
         <table className="w-full min-w-[1240px] caption-bottom text-sm">
           <TableHeader className="sticky top-0 z-10 bg-white shadow-[0_1px_0_0_hsl(var(--border))]">
             <TableRow>

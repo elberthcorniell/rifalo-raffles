@@ -131,12 +131,12 @@ export default function BankAccountsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[#0B2447]">Cuentas bancarias</h1>
           <p className="text-muted-foreground">Cuentas mostradas en el checkout</p>
         </div>
-        <Button onClick={openCreate}>
+        <Button className="self-start" onClick={openCreate}>
           <Plus className="h-4 w-4 mr-2" />
           Nueva cuenta
         </Button>
@@ -228,7 +228,32 @@ export default function BankAccountsPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="rounded-lg border bg-white overflow-hidden">
+      <div className="space-y-3 md:hidden">
+        {loading && <p className="text-sm text-muted-foreground">Cargando...</p>}
+        {accounts.map((a) => (
+          <article key={a.id} className="rounded-lg border bg-white p-4 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-medium">{a.bank}</p>
+                <p className="text-xs text-muted-foreground">{a.accountType}</p>
+                <p className="mt-1 font-mono text-sm break-all">{a.accountNumber}</p>
+                <p className="text-sm text-muted-foreground">{a.holderName}</p>
+              </div>
+              <Switch checked={a.isActive !== false} onCheckedChange={() => toggleActive(a)} />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="flex-1" onClick={() => openEdit(a)}>
+                Editar
+              </Button>
+              <Button variant="outline" size="sm" className="flex-1" onClick={() => handleDelete(a.id)}>
+                Eliminar
+              </Button>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <div className="hidden rounded-lg border bg-white overflow-x-auto md:block">
         <Table>
           <TableHeader>
             <TableRow>

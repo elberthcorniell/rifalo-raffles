@@ -8,6 +8,8 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+brag-output
+ig-output
 .npmrc
 dist
 dist-ssr

@@ -6,13 +6,13 @@ import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getSessionHandoffUrl } from '@/lib/auth-handoff'
 import { authErrorMessage } from '@/lib/auth-errors'
-import { PLATFORM } from '@/lib/constants'
 import { isSuperadminEmail, safeSuperadminNext } from '@/lib/superadmin'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
-import { Loader2, Sparkles } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
+import { PlatformLogo } from '@/components/platform/PlatformLogo'
 
 function PlatformLoginForm() {
   const searchParams = useSearchParams()
@@ -70,9 +70,8 @@ function PlatformLoginForm() {
     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-md p-8 space-y-6">
         <div className="text-center space-y-2">
-          <div className="flex items-center justify-center gap-2 font-bold text-[#0B2447] text-xl">
-            <Sparkles className="h-5 w-5 text-[#1976D2]" />
-            {PLATFORM.name}
+          <div className="flex justify-center">
+            <PlatformLogo height={40} />
           </div>
           <p className="text-muted-foreground text-sm">Accede a tu panel</p>
         </div>
@@ -107,7 +106,7 @@ function PlatformLoginForm() {
 
           <Button
             type="submit"
-            className="w-full bg-[#1976D2] hover:bg-[#1565C0]"
+            className="w-full bg-[#FFD000] text-black hover:bg-[#F0C400]"
             disabled={loading}
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Iniciar sesión'}
@@ -116,7 +115,7 @@ function PlatformLoginForm() {
 
         <p className="text-center text-sm text-muted-foreground">
           ¿Nuevo aquí?{' '}
-          <Link href="/signup" className="text-[#1976D2] hover:underline">
+          <Link href="/signup" className="font-semibold text-black hover:underline">
             Crear organización
           </Link>
         </p>

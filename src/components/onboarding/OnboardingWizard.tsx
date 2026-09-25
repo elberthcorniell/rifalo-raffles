@@ -341,7 +341,7 @@ export function OnboardingWizard() {
   if (bootLoading) {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-[#1976D2]" />
+        <Loader2 className="h-6 w-6 animate-spin text-black" />
       </div>
     )
   }
@@ -351,7 +351,7 @@ export function OnboardingWizard() {
       {step === 1 && (
         <Card className="p-6 sm:p-8 space-y-6">
           <div>
-            <h1 className="text-2xl font-bold text-[#0B2447]">Tu organización</h1>
+            <h1 className="text-2xl font-bold text-[#111111]">Tu organización</h1>
             <p className="text-sm text-muted-foreground mt-1">
               Así te verán tus clientes en el sitio público.
             </p>
@@ -379,12 +379,12 @@ export function OnboardingWizard() {
             </div>
             <div className="rounded-lg border bg-slate-50 px-3 py-2">
               <p className="text-xs text-muted-foreground">Tu sitio</p>
-              <p className="font-mono text-sm text-[#0B2447] break-all">{siteUrl}</p>
+              <p className="font-mono text-sm text-[#111111] break-all">{siteUrl}</p>
             </div>
             {error && <ErrorBox message={error} />}
             <Button
               type="submit"
-              className="w-full bg-[#1976D2] hover:bg-[#1565C0]"
+              className="w-full bg-[#FFD000] text-black hover:bg-[#F0C400]"
               disabled={saving}
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Continuar'}
@@ -396,7 +396,7 @@ export function OnboardingWizard() {
       {step === 2 && (
         <Card className="p-6 sm:p-8 space-y-6">
           <div>
-            <h1 className="text-2xl font-bold text-[#0B2447]">Tu marca</h1>
+            <h1 className="text-2xl font-bold text-[#111111]">Tu marca</h1>
             <p className="text-sm text-muted-foreground mt-1">
               Logo, colores y apariencia. Puedes cambiarlos después.
             </p>
@@ -550,7 +550,7 @@ export function OnboardingWizard() {
               </Button>
               <Button
                 type="submit"
-                className="bg-[#1976D2] hover:bg-[#1565C0]"
+                className="bg-[#FFD000] text-black hover:bg-[#F0C400]"
                 disabled={saving || uploadingLogo}
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Continuar'}
@@ -563,7 +563,7 @@ export function OnboardingWizard() {
       {step === 3 && (
         <Card className="p-6 sm:p-8 space-y-6">
           <div>
-            <h1 className="text-2xl font-bold text-[#0B2447]">Cuenta para cobrar</h1>
+            <h1 className="text-2xl font-bold text-[#111111]">Cuenta para cobrar</h1>
             <p className="text-sm text-muted-foreground mt-1">
               Tus clientes verán estos datos al pagar por transferencia.
             </p>
@@ -635,7 +635,7 @@ export function OnboardingWizard() {
               </Button>
               <Button
                 type="submit"
-                className="sm:ml-auto bg-[#1976D2] hover:bg-[#1565C0]"
+                className="sm:ml-auto bg-[#FFD000] text-black hover:bg-[#F0C400]"
                 disabled={saving || !bank}
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Continuar'}
@@ -648,7 +648,7 @@ export function OnboardingWizard() {
       {step === 4 && (
         <Card className="p-6 sm:p-8 space-y-6">
           <div>
-            <h1 className="text-2xl font-bold text-[#0B2447]">Tu primera rifa</h1>
+            <h1 className="text-2xl font-bold text-[#111111]">Tu primera rifa</h1>
             <p className="text-sm text-muted-foreground mt-1">
               Se publicará de inmediato para que puedas compartirla.
             </p>
@@ -702,7 +702,7 @@ export function OnboardingWizard() {
             <div className="rounded-md border bg-slate-50 px-3 py-2.5">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm text-muted-foreground">Ingreso esperado</span>
-                <span className="font-semibold text-[#0B2447]">
+                <span className="font-semibold text-[#111111]">
                   {formatRd((Number.isFinite(priceNum) ? priceNum : 0) * ticketCount)}
                 </span>
               </div>
@@ -735,7 +735,7 @@ export function OnboardingWizard() {
               </Button>
               <Button
                 type="submit"
-                className="sm:ml-auto bg-[#1976D2] hover:bg-[#1565C0]"
+                className="sm:ml-auto bg-[#FFD000] text-black hover:bg-[#F0C400]"
                 disabled={saving}
               >
                 {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Publicar y obtener enlace'}
@@ -749,9 +749,9 @@ export function OnboardingWizard() {
         <Card className="p-6 sm:p-8 space-y-6">
           <div className="text-center space-y-2">
             <CheckCircle2 className="h-12 w-12 text-emerald-500 mx-auto" />
-            <h1 className="text-2xl font-bold text-[#0B2447]">¡Tu rifa ya está en línea!</h1>
+            <h1 className="text-2xl font-bold text-[#111111]">¡Tu rifa ya está en línea!</h1>
             <p className="text-sm text-muted-foreground">
-              Comparte el enlace para empezar a vender boletos.
+              Comparte el link para empezar a vender boletos.
             </p>
           </div>
 
@@ -783,7 +783,7 @@ export function OnboardingWizard() {
             </Button>
           </div>
           <Button
-            className="w-full bg-[#1976D2] hover:bg-[#1565C0]"
+            className="w-full bg-[#FFD000] text-black hover:bg-[#F0C400]"
             onClick={() => {
               window.location.href = '/admin'
             }}

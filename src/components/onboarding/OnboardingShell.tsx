@@ -1,7 +1,6 @@
 'use client'
 
-import { Sparkles } from 'lucide-react'
-import { PLATFORM } from '@/lib/constants'
+import { PlatformLogo } from '@/components/platform/PlatformLogo'
 import { ONBOARDING_STEPS } from '@/lib/onboarding'
 import { cn } from '@/lib/utils'
 
@@ -20,10 +19,7 @@ export function OnboardingShell({
     <div className="min-h-screen bg-slate-100 flex flex-col">
       <header className="border-b bg-white">
         <div className="mx-auto max-w-xl px-4 py-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 font-bold text-[#0B2447]">
-            <Sparkles className="h-5 w-5 text-[#1976D2]" />
-            {PLATFORM.name}
-          </div>
+          <PlatformLogo height={32} />
           <p className="text-xs text-muted-foreground truncate">
             {done ? 'Listo' : `Paso ${currentStep} de ${ONBOARDING_STEPS.length}`}
             {orgName ? ` · ${orgName}` : ''}
@@ -40,16 +36,16 @@ export function OnboardingShell({
                     <div
                       className={cn(
                         'h-1.5 w-full rounded-full',
-                        reached || active || done ? 'bg-[#1976D2]' : 'bg-slate-200'
+                        reached || active || done ? 'bg-[#FFD000]' : 'bg-slate-200'
                       )}
                     />
                     <span
                       className={cn(
                         'text-[10px] sm:text-xs truncate w-full text-center',
                         active
-                          ? 'font-semibold text-[#0B2447]'
+                          ? 'font-semibold text-[#111111]'
                           : reached || done
-                            ? 'text-[#1976D2]'
+                            ? 'text-black'
                             : 'text-muted-foreground'
                       )}
                     >

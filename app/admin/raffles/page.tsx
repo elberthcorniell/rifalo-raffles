@@ -322,18 +322,51 @@ export default function AdminRafflesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[#0B2447]">Rifas</h1>
           <p className="text-muted-foreground">Administra rifas y rangos de números</p>
         </div>
-        <Button onClick={openCreate}>
+        <Button className="self-start" onClick={openCreate}>
           <Plus className="h-4 w-4 mr-2" />
           Nueva rifa
         </Button>
       </div>
 
-      <div className="rounded-lg border bg-white overflow-hidden">
+      <div className="space-y-3 md:hidden">
+        {loading && <p className="text-sm text-muted-foreground">Cargando...</p>}
+        {!loading && raffles.length === 0 && (
+          <p className="rounded-lg border bg-white px-4 py-8 text-center text-sm text-muted-foreground">
+            No hay rifas. Crea la primera.
+          </p>
+        )}
+        {raffles.map((r) => (
+          <article key={r.id} className="rounded-lg border bg-white p-4 flex gap-3">
+            <img
+              src={r.image || '/placeholder.svg'}
+              alt=""
+              className="h-14 w-14 shrink-0 rounded-md object-cover bg-slate-100 border"
+            />
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-medium leading-tight">{r.title}</p>
+                <Badge variant={r.status === 'active' ? 'default' : 'outline'}>
+                  {statusLabel[r.status || ''] || r.status}
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                RD$ {r.ticketPrice.toLocaleString('es-DO')} · {r.soldTickets} / {r.totalTickets} · {r.timeLeft}
+              </p>
+              {r.featured && <Badge variant="secondary">Destacada</Badge>}
+              <Button variant="outline" size="sm" className="w-full" onClick={() => openEdit(r.id)}>
+                Editar
+              </Button>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <div className="hidden rounded-lg border bg-white overflow-x-auto md:block">
         <Table>
           <TableHeader>
             <TableRow>

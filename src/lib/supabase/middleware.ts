@@ -30,8 +30,9 @@ type TenantOrg = {
 /** Left-most label, ignoring a leading www. Used when the host is not a known tenant subdomain. */
 function assumeTenantSlug(host: string): string | null {
   const bare = host.replace(/^www\./, '')
+  if (bare === 'localhost' || bare === '127.0.0.1') return null
   const [label, ...rest] = bare.split('.')
-  if (!label || rest.length === 0) return null
+  if (!label || rest.length === 0 || label === 'www') return null
   return label
 }
 
@@ -163,6 +164,19 @@ async function continueAsTenant(
   return supabaseResponse
 }
 
+const MISSING_ORG_PATH = '/platform/missing'
+
+/** Subdomain (or custom domain) that was supposed to be an organization, but none exists. */
+function continueAsMissingOrg(request: NextRequest, pathname: string) {
+  if (pathname.startsWith('/api')) {
+    return NextResponse.json({ error: 'Organización no encontrada' }, { status: 404 })
+  }
+
+  const rewriteUrl = request.nextUrl.clone()
+  rewriteUrl.pathname = MISSING_ORG_PATH
+  return NextResponse.rewrite(rewriteUrl)
+}
+
 /** Apex and any host that does not resolve to an organization. */
 async function continueAsPlatform(
   request: NextRequest,
@@ -201,7 +215,8 @@ async function continueAsPlatform(
     }
   }
 
-  // Rewrite home and auth pages under /platform (URL stays / , /signup, /login)
+  // Rewrite home, auth, and the public catalog under /platform
+  // (URL stays /, /signup, /login, /explore)
   if (pathname === '/' || pathname === '') {
     const rewriteUrl = request.nextUrl.clone()
     rewriteUrl.pathname = '/platform'
@@ -210,7 +225,7 @@ async function continueAsPlatform(
     })
   }
 
-  if (pathname === '/signup' || pathname === '/login') {
+  if (pathname === '/signup' || pathname === '/login' || pathname === '/explore') {
     const rewriteUrl = request.nextUrl.clone()
     rewriteUrl.pathname = `/platform${pathname}`
     return NextResponse.rewrite(rewriteUrl, {
@@ -258,7 +273,11 @@ export async function updateSession(request: NextRequest) {
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set(PATHNAME_HEADER, pathname)
 
-  const service = resolved.kind === 'apex' ? null : createServiceClient()
+  if (resolved.kind === 'apex' || resolved.slug === 'www') {
+    return continueAsPlatform(request, requestHeaders, pathname)
+  }
+
+  const service = createServiceClient()
   if (service) {
     const orgFromDomain = await lookupOrgByCustomDomain(service, resolved.host)
     if (orgFromDomain) {
@@ -267,9 +286,19 @@ export async function updateSession(request: NextRequest) {
 
     const slug =
       resolved.kind === 'tenant' && resolved.slug ? resolved.slug : assumeTenantSlug(resolved.host)
-    const org = slug ? await lookupOrgBySlug(service, slug) : null
-    if (org) {
-      return continueAsTenant(request, requestHeaders, pathname, service, org)
+
+    if (slug === 'www') {
+      return continueAsPlatform(request, requestHeaders, pathname)
+    }
+
+    if (slug && isValidSlug(slug) && !(RESERVED_SLUGS as readonly string[]).includes(slug)) {
+      const org = await lookupOrgBySlug(service, slug)
+      if (org) {
+        return continueAsTenant(request, requestHeaders, pathname, service, org)
+      }
+      if (resolved.kind === 'tenant') {
+        return continueAsMissingOrg(request, pathname)
+      }
     }
   }
 

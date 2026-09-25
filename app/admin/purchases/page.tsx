@@ -158,7 +158,42 @@ function PurchasesContent() {
         ))}
       </div>
 
-      <div className="rounded-lg border bg-white overflow-hidden">
+      <div className="space-y-3 md:hidden">
+        {loading && <p className="text-sm text-muted-foreground">Cargando...</p>}
+        {!loading && purchases.length === 0 && (
+          <p className="rounded-lg border bg-white px-4 py-8 text-center text-sm text-muted-foreground">
+            No hay compras
+          </p>
+        )}
+        {purchases.map((p) => (
+          <article key={p.id} className="rounded-lg border bg-white p-4 space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-medium">{p.customer?.name || 'Cliente'}</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {p.customer?.whatsapp || p.customer?.email || '—'}
+                </p>
+                <p className="text-sm mt-1">{p.raffle?.title}</p>
+              </div>
+              <Badge className={cn('border-0 shrink-0', statusBadge[p.status])}>{p.status}</Badge>
+            </div>
+            <div className="flex items-end justify-between gap-3 text-sm">
+              <div>
+                <p className="font-medium">RD$ {p.totalAmount.toLocaleString('es-DO')}</p>
+                <p className="text-xs text-muted-foreground">{p.quantity} boletos</p>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(p.submittedAt).toLocaleString('es-DO')}
+                </p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => openDetail(p.id)}>
+                Ver
+              </Button>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <div className="hidden rounded-lg border bg-white overflow-x-auto md:block">
         <Table>
           <TableHeader>
             <TableRow>

@@ -133,14 +133,14 @@ export default function TestimonialsAdminPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[#0B2447]">Testimonios</h1>
           <p className="text-muted-foreground text-sm">
             Aparecen en el sitio público. Si no hay activos, la sección se oculta.
           </p>
         </div>
-        <Button onClick={openCreate}>
+        <Button className="self-start" onClick={openCreate}>
           <Plus className="h-4 w-4 mr-2" />
           Nuevo testimonio
         </Button>
@@ -243,7 +243,41 @@ export default function TestimonialsAdminPage() {
           Aún no hay testimonios. Mientras esté vacío, la sección no se muestra en el sitio.
         </div>
       ) : (
-        <div className="rounded-lg border bg-white overflow-hidden">
+        <>
+        <div className="space-y-3 md:hidden">
+          {items.map((t) => (
+            <article key={t.id} className="rounded-lg border bg-white p-4 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0B2447] text-xs font-bold text-white">
+                    {t.initials}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="font-medium">{t.name}</p>
+                    <p className="text-xs text-muted-foreground">{t.roleLabel}</p>
+                  </div>
+                </div>
+                <Switch checked={t.isActive !== false} onCheckedChange={() => toggleActive(t)} />
+              </div>
+              <p className="text-sm text-muted-foreground">{t.quote}</p>
+              <div className="flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-1 text-sm">
+                  <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                  {t.rating}
+                </span>
+                <div className="flex gap-1">
+                  <Button variant="outline" size="sm" onClick={() => openEdit(t)}>
+                    Editar
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleDelete(t.id)}>
+                    Eliminar
+                  </Button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+        <div className="hidden rounded-lg border bg-white overflow-x-auto md:block">
           <Table>
             <TableHeader>
               <TableRow>
@@ -295,6 +329,7 @@ export default function TestimonialsAdminPage() {
             </TableBody>
           </Table>
         </div>
+        </>
       )}
     </div>
   )

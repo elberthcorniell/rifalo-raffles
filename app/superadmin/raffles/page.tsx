@@ -115,7 +115,33 @@ export default function SuperadminRafflesPage() {
         />
       </div>
 
-      <div className="rounded-lg border bg-white overflow-hidden">
+      <div className="space-y-3 md:hidden">
+        {loading && <p className="text-sm text-muted-foreground">Cargando...</p>}
+        {!loading && raffles.length === 0 && (
+          <p className="rounded-lg border bg-white px-4 py-8 text-center text-sm text-muted-foreground">
+            No hay rifas.
+          </p>
+        )}
+        {!loading &&
+          raffles.map((r) => (
+            <article key={r.id} className="rounded-lg border bg-white p-4 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-medium leading-tight">{r.title}</p>
+                <Badge variant={r.status === 'active' ? 'default' : 'outline'}>
+                  {statusLabel[r.status] || r.status}
+                </Badge>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {r.org ? `${r.org.name} · ${r.org.slug}` : 'Sin organización'}
+              </p>
+              <p className="text-sm">RD$ {r.ticketPrice.toLocaleString('es-DO')}</p>
+              <TicketsCell sold={r.soldTickets} total={r.totalTickets} />
+              <p className="text-xs text-muted-foreground">{formatDate(r.createdAt)}</p>
+            </article>
+          ))}
+      </div>
+
+      <div className="hidden rounded-lg border bg-white overflow-x-auto md:block">
         <Table>
           <TableHeader>
             <TableRow>

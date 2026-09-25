@@ -1,7 +1,7 @@
 export const PLATFORM = {
   name: 'Rifalo',
   tagline: 'Haz tus rifas gratis. Sin tarjeta. Tu propio sitio y panel de administración.',
-  email: 'hola@rifalo.com',
+  email: 'hola@rifalo.do',
   copyright: `© ${new Date().getFullYear()} Rifalo`,
 } as const
 

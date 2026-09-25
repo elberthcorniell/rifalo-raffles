@@ -39,13 +39,13 @@ function rootHostsFrom(rootDomain?: string | string[]): string[] {
 export function parseHost(hostname: string, rootDomain?: string | string[]): ResolvedHost {
   const host = hostWithoutPort(hostname)
 
-  if (host === '127.0.0.1') {
+  if (host === '127.0.0.1' || host === 'localhost' || host === 'www.localhost') {
     return { kind: 'apex', slug: null, host }
   }
 
   if (host.endsWith('.localhost')) {
     const slug = host.replace(/\.localhost$/, '')
-    if (slug && !slug.includes('.')) {
+    if (slug && !slug.includes('.') && slug !== 'www') {
       return { kind: 'tenant', slug, host }
     }
   }

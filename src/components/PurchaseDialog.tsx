@@ -320,7 +320,76 @@ export default function PurchaseDialog({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Ticket Quantity Selector */}
+
+            {(checkoutFields.name ||
+              checkoutFields.email ||
+              checkoutFields.phone) && (
+              <div className="space-y-4 border-card-border">
+                {checkoutFields.name && (
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nombre completo *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Ej: Juan Pérez" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                {checkoutFields.email && (
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Correo electrónico *</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="email"
+                            placeholder="Ej: juan@ejemplo.com"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Te enviaremos confirmación cuando tu pago sea
+                          verificado
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                {checkoutFields.phone && (
+                  <FormField
+                    control={form.control}
+                    name="whatsappNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Número de WhatsApp *</FormLabel>
+                        <FormControl>
+                          <PhoneInput
+                            defaultCountry="do"
+                            value={field.value || ""}
+                            onChange={field.onChange}
+                            placeholder="809 123 4567"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
+            )}
+
+
+                        {/* Ticket Quantity Selector */}
             <div className="space-y-4 py-4">
               <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
                 <div>
@@ -379,75 +448,6 @@ export default function PurchaseDialog({
               </div>
             </div>
 
-            {(checkoutFields.name ||
-              checkoutFields.email ||
-              checkoutFields.phone) && (
-              <div className="space-y-4 py-4 border-t border-card-border">
-                {checkoutFields.name && (
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nombre completo *</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ej: Juan Pérez" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-
-                {checkoutFields.email && (
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Correo electrónico *</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="email"
-                            placeholder="Ej: juan@ejemplo.com"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Te enviaremos confirmación cuando tu pago sea
-                          verificado
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-
-                {checkoutFields.phone && (
-                  <FormField
-                    control={form.control}
-                    name="whatsappNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Número de WhatsApp *</FormLabel>
-                        <FormControl>
-                          <PhoneInput
-                            defaultCountry="do"
-                            value={field.value || ""}
-                            onChange={field.onChange}
-                            placeholder="809 123 4567"
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          El código de país se selecciona automáticamente
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-              </div>
-            )}
 
             <div className="space-y-4">
               <FormField
@@ -571,15 +571,6 @@ export default function PurchaseDialog({
                   </FormItem>
                 )}
               />
-
-              {selectedAccountId && (
-                <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
-                  <p className="font-medium text-foreground">
-                    Monto a transferir: RD${totalPrice.toLocaleString()}
-                  </p>
-                </div>
-              )}
-
               <Button
                 type="submit"
                 className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-secondary font-bold py-6"
