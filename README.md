@@ -76,7 +76,7 @@ npm run dev
 - Tenant Cura: http://cura.localhost:3000
 - Admin Cura: http://cura.localhost:3000/admin/login
 
-> **Nota:** Con la carpeta `src/`, el middleware debe vivir en [`src/middleware.ts`](src/middleware.ts) (no en la raíz).
+> **Nota:** `app/` está en la raíz del proyecto, así que el middleware tiene que estar en [`middleware.ts`](middleware.ts), al mismo nivel que `app/`. Next.js no lo incluye si vive en `src/`.
 
 Chrome resuelve `*.localhost`. Si las cookies no se comparten entre apex y subdominio en local, inicia sesión directamente en `/admin/login` del tenant.
 
