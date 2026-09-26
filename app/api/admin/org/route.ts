@@ -11,6 +11,14 @@ import {
   normalizeThemeColors,
 } from '@/types/org'
 import { isSiteFont } from '@/lib/fonts'
+import { customDomainError, normalizeCustomDomain } from '@/lib/custom-domain'
+import {
+  describeCustomDomain,
+  provisionCustomDomain,
+  releaseCustomDomain,
+  vercelDomainErrorMessage,
+  vercelDomainsMode,
+} from '@/lib/vercel-domains'
 
 export async function GET() {
   const auth = await requireOrgAdmin()
@@ -47,6 +55,9 @@ export async function PATCH(request: Request) {
   const body = await request.json()
 
   const updates: Record<string, unknown> = {}
+  let previousDomain: string | null = null
+  let attachedDomain: string | null = null
+  let domainTouched = false
   if (body.name != null) updates.name = String(body.name).trim()
   if (body.tagline != null) updates.tagline = String(body.tagline)
   if (body.email !== undefined) updates.email = body.email || null
@@ -144,6 +155,7 @@ export async function PATCH(request: Request) {
   }
 
   if (body.customDomain !== undefined) {
+    domainTouched = true
     const { effectiveOrgPlan } = await import('@/lib/billing')
     const plan = effectiveOrgPlan(org)
     if (plan !== 'unlimited' && body.customDomain) {
@@ -155,19 +167,49 @@ export async function PATCH(request: Request) {
         { status: 403 }
       )
     }
-    const domain =
-      body.customDomain == null || body.customDomain === ''
-        ? null
-        : String(body.customDomain)
-            .trim()
-            .toLowerCase()
-            .replace(/^https?:\/\//, '')
-            .replace(/\/.*$/, '')
-    if (domain && !/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/.test(domain)) {
+    const domain = normalizeCustomDomain(body.customDomain)
+    if (domain) {
+      const invalid = customDomainError(domain)
+      if (invalid) {
+        return NextResponse.json({ success: false, error: invalid }, { status: 400 })
+      }
+    }
+    previousDomain = normalizeCustomDomain(org.custom_domain)
+    if (domain && domain !== previousDomain) {
+      const { data: taken } = await admin
+        .from('organizations')
+        .select('id')
+        .eq('custom_domain', domain)
+        .neq('id', org.id)
+        .maybeSingle()
+      if (taken) {
+        return NextResponse.json(
+          { success: false, error: 'Ese dominio ya está en uso.' },
+          { status: 409 }
+        )
+      }
+    }
+    const mode = vercelDomainsMode()
+    if (domain && mode === 'missing') {
       return NextResponse.json(
-        { success: false, error: 'Dominio inválido' },
-        { status: 400 }
+        {
+          success: false,
+          error: 'Falta VERCEL_TOKEN para registrar el dominio y emitir HTTPS.',
+        },
+        { status: 503 }
       )
+    }
+    if (domain && mode === 'ready') {
+      try {
+        await provisionCustomDomain(domain)
+        if (domain !== previousDomain) attachedDomain = domain
+      } catch (error) {
+        console.error('provisionCustomDomain', error instanceof Error ? error.message : error)
+        return NextResponse.json(
+          { success: false, error: vercelDomainErrorMessage(error) },
+          { status: 502 }
+        )
+      }
     }
     updates.custom_domain = domain
   }
@@ -184,14 +226,35 @@ export async function PATCH(request: Request) {
     .single()
 
   if (error) {
+    if (attachedDomain) {
+      await releaseCustomDomain(attachedDomain).catch((releaseError) => {
+        console.error('releaseCustomDomain', releaseError instanceof Error ? releaseError.message : releaseError)
+      })
+    }
+    if (error.code === '23505') {
+      return NextResponse.json(
+        { success: false, error: 'Ese dominio ya está en uso.' },
+        { status: 409 }
+      )
+    }
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
   }
+
+  const savedDomain = normalizeCustomDomain(data.custom_domain)
+  if (previousDomain && previousDomain !== savedDomain && vercelDomainsMode() === 'ready') {
+    await releaseCustomDomain(previousDomain).catch((releaseError) => {
+      console.error('releaseCustomDomain', releaseError instanceof Error ? releaseError.message : releaseError)
+    })
+  }
+
+  const domainStatus = domainTouched ? await describeCustomDomain(savedDomain) : null
 
   return NextResponse.json({
     success: true,
     data: {
       org: data,
       brand: getOrgBrand(data),
+      domainStatus,
     },
   })
 }

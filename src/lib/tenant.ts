@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { headers } from 'next/headers'
 import { createAdminClient, hasSupabaseConfig } from '@/lib/supabase/admin'
 import { ORG_ID_HEADER, ORG_SLUG_HEADER } from '@/lib/tenant-host'
@@ -26,7 +27,7 @@ export async function lookupOrgBySlug(slug: string): Promise<Organization | null
   return data as Organization
 }
 
-export async function getOrgFromHeaders(): Promise<Organization | null> {
+export const getOrgFromHeaders = cache(async (): Promise<Organization | null> => {
   const h = await headers()
   const orgId = h.get(ORG_ID_HEADER)
   const slug = h.get(ORG_SLUG_HEADER)
@@ -43,7 +44,7 @@ export async function getOrgFromHeaders(): Promise<Organization | null> {
     return lookupOrgBySlug(slug)
   }
   return null
-}
+})
 
 export function requireOrgFromHeadersSync(orgId: string | null, slug: string | null): {
   orgId: string

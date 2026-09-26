@@ -13,15 +13,28 @@ import { PATHNAME_HEADER } from "@/lib/tenant-host";
 import { getBrandCssVars, getThemeSurfaceCssVars } from "@/lib/colors";
 import { fontFamilyValue, googleFontsHref } from "@/lib/fonts";
 
-export const metadata: Metadata = {
-  title: {
-    default: `${PLATFORM.name} — Gestión de rifas`,
-    template: `%s | ${PLATFORM.name}`,
-  },
-  description: PLATFORM.tagline,
-  authors: [{ name: PLATFORM.name }],
-  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || getPlatformUrl()),
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const metadata: Metadata = {
+    title: {
+      default: `${PLATFORM.name} — Gestión de rifas`,
+      template: `%s | ${PLATFORM.name}`,
+    },
+    description: PLATFORM.tagline,
+    authors: [{ name: PLATFORM.name }],
+    metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || getPlatformUrl()),
+  };
+
+  const org = await getOrgFromHeaders();
+  const pathname = (await headers()).get(PATHNAME_HEADER) || "";
+  if (org?.custom_domain && isStorefrontPath(pathname)) {
+    const path = pathname === "/" ? "" : pathname;
+    metadata.alternates = {
+      canonical: `https://${org.custom_domain}${path}`,
+    };
+  }
+
+  return metadata;
+}
 
 export const viewport: Viewport = {
   width: "device-width",

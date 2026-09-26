@@ -82,10 +82,13 @@ Chrome resuelve `*.localhost`. Si las cookies no se comparten entre apex y subdo
 
 ## Producción (Vercel)
 
-1. Dominio apex + wildcard `*.tudominio.com`
+1. Dominio apex + wildcard `*.tudominio.com` (nameservers de Vercel, o delega `_acme-challenge` si el DNS es externo)
 2. `NEXT_PUBLIC_ROOT_DOMAIN=tudominio.com`
-3. En Supabase Auth → Redirect URLs: `https://*.tudominio.com/**` y `https://tudominio.com/**`
-4. `supabase db push` / link al proyecto hosted
+3. Token de Vercel con permiso para editar dominios del proyecto: `VERCEL_TOKEN`. En Vercel, `VERCEL_PROJECT_ID` y `VERCEL_ORG_ID` ya vienen definidos; en local hay que ponerlos a mano (`VERCEL_TEAM_ID` si el equipo no es `VERCEL_ORG_ID`)
+4. En Supabase Auth → Redirect URLs: `https://*.tudominio.com/**` y `https://tudominio.com/**`
+5. `supabase db push` / link al proyecto hosted
+
+El plan Ilimitado guarda el dominio propio y lo agrega al proyecto con la API de Vercel. El admin ve los registros DNS (y el TXT de verificación, si hace falta). Vercel emite el certificado cuando el dominio está verificado y el DNS apunta al proyecto. Al quitar el dominio, se desasocia del proyecto. Un apex también registra `www` con redirección.
 
 ## Self-serve
 
