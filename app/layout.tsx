@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import type { CSSProperties } from "react";
 import { headers } from "next/headers";
 import { Providers } from "./providers";
 import { ClientProviders } from "./client-providers";
@@ -48,8 +49,8 @@ export default async function RootLayout({
   const pathname = (await headers()).get(PATHNAME_HEADER) || "";
   const applyStorefront = !!brand && isStorefrontPath(pathname);
   const applyDark = applyStorefront && brand.theme === "dark";
-  const brandStyle = brand
-    ? {
+  const brandStyle: CSSProperties | undefined = brand
+    ? ({
         ...getBrandCssVars(brand.primaryColor, brand.secondaryColor),
         ...(applyStorefront
           ? {
@@ -58,7 +59,7 @@ export default async function RootLayout({
               ...(brand.theme === "custom" ? getThemeSurfaceCssVars(brand.themeColors) : {}),
             }
           : {}),
-      }
+      } as CSSProperties)
     : undefined;
 
   return (
