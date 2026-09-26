@@ -13,9 +13,11 @@ import { meetsContrast, THEME_SURFACES } from "@/lib/colors";
 const Hero = ({
   showCopy = true,
   showHowItWorks = true,
+  showRaffles = true,
 }: {
   showCopy?: boolean
   showHowItWorks?: boolean
+  showRaffles?: boolean
 }) => {
   const brand = useOrgBrand();
   const [firstRaffle, setFirstRaffle] = useState<Raffle | null>(null);
@@ -114,6 +116,7 @@ const Hero = ({
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                {showRaffles && (
                 <Button
                   size="lg"
                   className="bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-secondary font-bold py-6 px-8 text-base"
@@ -125,6 +128,7 @@ const Hero = ({
                   Ver Rifas Activas
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
+                )}
                 {showHowItWorks && (
                 <Button
                   size="lg"

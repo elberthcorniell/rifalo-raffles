@@ -90,6 +90,9 @@ export async function PATCH(request: Request) {
   if (body.showHowItWorks != null) {
     updates.show_how_it_works = body.showHowItWorks === true
   }
+  if (body.showRaffles != null) {
+    updates.show_raffles = body.showRaffles === true
+  }
   if (body.showTrustBenefits != null) {
     updates.show_trust_benefits = body.showTrustBenefits === true
   }

@@ -6,13 +6,16 @@ import { useOrgBrand } from "@/components/OrgBrandProvider";
 
 const Footer = ({
   showHowItWorks,
+  showRaffles,
   showTestimonials,
 }: {
   showHowItWorks?: boolean
+  showRaffles?: boolean
   showTestimonials?: boolean
 }) => {
   const brand = useOrgBrand();
   const howItWorksVisible = showHowItWorks ?? brand.showHowItWorks
+  const rafflesVisible = showRaffles ?? brand.showRaffles
   const testimonialsVisible = showTestimonials ?? brand.showTestimonials
   const [hasTestimonials, setHasTestimonials] = useState(false)
 
@@ -58,7 +61,9 @@ const Footer = ({
           <div className="space-y-4">
             <h4 className="text-lg font-semibold">Enlaces Rápidos</h4>
             <ul className="space-y-2 text-sm">
-              <li><a href="#rifas" className="opacity-80 hover:opacity-100 transition-opacity">Rifas Activas</a></li>
+              {rafflesVisible && (
+                <li><a href="#rifas" className="opacity-80 hover:opacity-100 transition-opacity">Rifas Activas</a></li>
+              )}
               {howItWorksVisible && (
                 <li><a href="#como-funciona" className="opacity-80 hover:opacity-100 transition-opacity">Cómo Funciona</a></li>
               )}

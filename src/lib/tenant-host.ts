@@ -127,6 +127,7 @@ export function getOrgBrand(org: Organization): OrgBrand {
     themeColors: normalizeThemeColors(org.theme_colors),
     showHeroCopy: org.show_hero_copy !== false,
     showHowItWorks: org.show_how_it_works !== false,
+    showRaffles: org.show_raffles !== false,
     showTrustBenefits: org.show_trust_benefits !== false,
     showTestimonials: org.show_testimonials !== false,
     footerBgColor: footer.bg,

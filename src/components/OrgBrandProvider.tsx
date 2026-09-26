@@ -43,6 +43,7 @@ const fallbackBrand: OrgBrand = {
   themeColors: DEFAULT_THEME_COLORS,
   showHeroCopy: true,
   showHowItWorks: true,
+  showRaffles: true,
   showTrustBenefits: true,
   showTestimonials: true,
   footerBgColor: DEFAULT_PRIMARY_COLOR,

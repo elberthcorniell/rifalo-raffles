@@ -76,6 +76,7 @@ export interface Organization {
   theme_colors?: ThemeColors | null
   show_hero_copy?: boolean
   show_how_it_works?: boolean
+  show_raffles?: boolean
   show_trust_benefits?: boolean
   show_testimonials?: boolean
   footer_bg_color?: string | null
@@ -131,6 +132,7 @@ export interface OrgBrand {
   themeColors: ThemeColors
   showHeroCopy: boolean
   showHowItWorks: boolean
+  showRaffles: boolean
   showTrustBenefits: boolean
   showTestimonials: boolean
   footerBgColor: string

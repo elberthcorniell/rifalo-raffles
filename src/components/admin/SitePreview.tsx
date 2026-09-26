@@ -71,6 +71,7 @@ export function SitePreview({
   twitterUrl,
   showHeroCopy,
   showHowItWorks,
+  showRaffles,
   showTrustBenefits,
   showTestimonials,
   footerBgColor,
@@ -95,6 +96,7 @@ export function SitePreview({
   twitterUrl: string
   showHeroCopy: boolean
   showHowItWorks: boolean
+  showRaffles: boolean
   showTrustBenefits: boolean
   showTestimonials: boolean
   footerBgColor: string
@@ -129,7 +131,7 @@ export function SitePreview({
     const observer = new ResizeObserver(measure)
     observer.observe(content)
     return () => observer.disconnect()
-  }, [theme, name, tagline, logo, email, phone, location, showHeroCopy, showHowItWorks, showTrustBenefits, showTestimonials, footerBgColor, footerTextColor, headingFont, bodyFont])
+  }, [theme, name, tagline, logo, email, phone, location, showHeroCopy, showHowItWorks, showRaffles, showTrustBenefits, showTestimonials, footerBgColor, footerTextColor, headingFont, bodyFont])
 
   const primary = isHexColor(primaryColor) ? primaryColor : DEFAULT_PRIMARY_COLOR
   const secondary = isHexColor(secondaryColor) ? secondaryColor : DEFAULT_SECONDARY_COLOR
@@ -150,6 +152,7 @@ export function SitePreview({
     themeColors,
     showHeroCopy,
     showHowItWorks,
+    showRaffles,
     showTrustBenefits,
     showTestimonials,
     footerBgColor: footer.bg,
@@ -216,13 +219,13 @@ export function SitePreview({
             <OrgBrandScope brand={draft}>
               <Header />
               <main>
-                <Hero showCopy={showHeroCopy} showHowItWorks={showHowItWorks} />
+                <Hero showCopy={showHeroCopy} showHowItWorks={showHowItWorks} showRaffles={showRaffles} />
                 {showHowItWorks && <HowItWorks />}
-                <RaffleGrid />
+                {showRaffles && <RaffleGrid />}
                 {showTrustBenefits && <TrustBenefits />}
                 {showTestimonials && <PreviewTestimonials />}
               </main>
-              <Footer showHowItWorks={showHowItWorks} showTestimonials={showTestimonials} />
+              <Footer showHowItWorks={showHowItWorks} showRaffles={showRaffles} showTestimonials={showTestimonials} />
             </OrgBrandScope>
           </div>
         </div>

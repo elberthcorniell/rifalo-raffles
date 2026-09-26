@@ -65,6 +65,7 @@ export default async function Home() {
   const brand = org ? getOrgBrand(org) : null
   const showHeroCopy = brand?.showHeroCopy !== false
   const showHowItWorks = brand?.showHowItWorks !== false
+  const showRaffles = brand?.showRaffles !== false
   const showTrustBenefits = brand?.showTrustBenefits !== false
   const showTestimonials = brand?.showTestimonials !== false
 
@@ -72,13 +73,13 @@ export default async function Home() {
     <div className="min-h-screen bg-background font-poppins pb-20 md:pb-0">
       <Header />
       <main>
-        <Hero showCopy={showHeroCopy} showHowItWorks={showHowItWorks} />
+        <Hero showCopy={showHeroCopy} showHowItWorks={showHowItWorks} showRaffles={showRaffles} />
         {showHowItWorks && <HowItWorks />}
-        <RaffleGrid />
+        {showRaffles && <RaffleGrid />}
         {showTrustBenefits && <TrustBenefits />}
         {showTestimonials && <Testimonials />}
       </main>
-      <Footer showHowItWorks={showHowItWorks} showTestimonials={showTestimonials} />
+      <Footer showHowItWorks={showHowItWorks} showRaffles={showRaffles} showTestimonials={showTestimonials} />
       <StickyRaffleBanner />
     </div>
   );

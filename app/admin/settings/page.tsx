@@ -69,6 +69,7 @@ export default function AdminSettingsPage() {
   const [themeColors, setThemeColors] = useState<ThemeColors>(DEFAULT_THEME_COLORS)
   const [showHeroCopy, setShowHeroCopy] = useState(true)
   const [showHowItWorks, setShowHowItWorks] = useState(true)
+  const [showRaffles, setShowRaffles] = useState(true)
   const [showTrustBenefits, setShowTrustBenefits] = useState(true)
   const [showTestimonials, setShowTestimonials] = useState(true)
   const [footerBgColor, setFooterBgColor] = useState(DEFAULT_PRIMARY_COLOR)
@@ -104,6 +105,7 @@ export default function AdminSettingsPage() {
           setThemeColors(normalizeThemeColors(o.theme_colors))
           setShowHeroCopy(o.show_hero_copy !== false)
           setShowHowItWorks(o.show_how_it_works !== false)
+          setShowRaffles(o.show_raffles !== false)
           setShowTrustBenefits(o.show_trust_benefits !== false)
           setShowTestimonials(o.show_testimonials !== false)
           const footer = resolveFooterColors(
@@ -214,6 +216,7 @@ export default function AdminSettingsPage() {
           themeColors,
           showHeroCopy,
           showHowItWorks,
+          showRaffles,
           showTrustBenefits,
           showTestimonials,
           footerBgColor,
@@ -275,6 +278,7 @@ export default function AdminSettingsPage() {
       twitterUrl={twitterUrl}
       showHeroCopy={showHeroCopy}
       showHowItWorks={showHowItWorks}
+      showRaffles={showRaffles}
       showTrustBenefits={showTrustBenefits}
       showTestimonials={showTestimonials}
       footerBgColor={footerBgColor}
@@ -409,6 +413,12 @@ export default function AdminSettingsPage() {
                   onChange: setShowHowItWorks,
                   title: 'Cómo funciona',
                   hint: 'Los tres pasos debajo del inicio. Si la ocultas, también se quita su enlace del footer.',
+                },
+                {
+                  checked: showRaffles,
+                  onChange: setShowRaffles,
+                  title: 'Rifas activas',
+                  hint: 'El listado de rifas en el inicio. Si lo ocultas, también se quitan su botón y el enlace del footer.',
                 },
                 {
                   checked: showTrustBenefits,
