@@ -18,7 +18,10 @@ const Header = () => {
   };
 
   return (
-    <header className="bg-background/80 backdrop-blur-md border-b border-border sticky top-0 z-50">
+    <header
+      className={brand.theme === 'custom' ? 'border-b sticky top-0 z-50' : 'bg-background/80 backdrop-blur-md border-b border-border sticky top-0 z-50'}
+      style={brand.theme === 'custom' ? { backgroundColor: brand.themeColors.background, borderColor: brand.themeColors.foreground + '29', color: brand.themeColors.foreground } : undefined}
+    >
       <div className="container mx-auto px-4 py-3">
         {/* Mobile Layout */}
         <div className="flex items-center justify-between md:hidden">

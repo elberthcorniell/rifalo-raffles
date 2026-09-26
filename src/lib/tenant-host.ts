@@ -4,10 +4,12 @@ import {
   DEFAULT_PRIMARY_COLOR,
   DEFAULT_SECONDARY_COLOR,
   normalizeOrgTheme,
+  normalizeThemeColors,
   type Organization,
   type OrgBrand,
 } from '@/types/org'
-import { normalizeHexColor } from '@/lib/colors'
+import { normalizeHexColor, resolveFooterColors } from '@/lib/colors'
+import { normalizeSiteFont } from '@/lib/fonts'
 
 export const ORG_ID_HEADER = 'x-org-id'
 export const ORG_SLUG_HEADER = 'x-org-slug'
@@ -100,6 +102,7 @@ export function getOrgBrand(org: Organization): OrgBrand {
   const url = getTenantUrl(org.slug)
   const primary = normalizeHexColor(org.primary_color || '', DEFAULT_PRIMARY_COLOR)
   const secondary = normalizeHexColor(org.secondary_color || '', DEFAULT_SECONDARY_COLOR)
+  const footer = resolveFooterColors(primary, org.footer_bg_color, org.footer_text_color)
   return {
     name: org.name,
     slug: org.slug,
@@ -121,5 +124,14 @@ export function getOrgBrand(org: Organization): OrgBrand {
     primaryColor: primary,
     secondaryColor: secondary,
     theme: normalizeOrgTheme(org.theme ?? DEFAULT_ORG_THEME),
+    themeColors: normalizeThemeColors(org.theme_colors),
+    showHeroCopy: org.show_hero_copy !== false,
+    showHowItWorks: org.show_how_it_works !== false,
+    showTrustBenefits: org.show_trust_benefits !== false,
+    showTestimonials: org.show_testimonials !== false,
+    footerBgColor: footer.bg,
+    footerTextColor: footer.text,
+    headingFont: normalizeSiteFont(org.heading_font),
+    bodyFont: normalizeSiteFont(org.body_font),
   }
 }

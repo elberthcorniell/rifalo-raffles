@@ -10,13 +10,22 @@ import RaffleCardSkeleton from "@/components/RaffleCardSkeleton";
 import { useOrgBrand } from "@/components/OrgBrandProvider";
 import { meetsContrast, THEME_SURFACES } from "@/lib/colors";
 
-const Hero = () => {
+const Hero = ({
+  showCopy = true,
+  showHowItWorks = true,
+}: {
+  showCopy?: boolean
+  showHowItWorks?: boolean
+}) => {
   const brand = useOrgBrand();
   const [firstRaffle, setFirstRaffle] = useState<Raffle | null>(null);
   const [loading, setLoading] = useState(true);
   const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
 
-  const surface = THEME_SURFACES[brand.theme === 'dark' ? 'dark' : 'light']
+  const surface =
+    brand.theme === 'custom'
+      ? brand.themeColors.background
+      : THEME_SURFACES[brand.theme === 'dark' ? 'dark' : 'light']
   const primaryOkOnSurface = meetsContrast(brand.primaryColor, surface, 'aa-large')
   const secondaryOkOnSurface = meetsContrast(brand.secondaryColor, surface, 'aa-large')
   const titleClass = primaryOkOnSurface
@@ -29,6 +38,17 @@ const Hero = () => {
     : secondaryOkOnSurface
       ? 'border-secondary/40 text-secondary hover:bg-secondary/10'
       : 'border-foreground/30 text-foreground hover:bg-foreground/10'
+  const literal = brand.theme === 'custom'
+  const literalTitle = literal
+    ? primaryOkOnSurface
+      ? brand.primaryColor
+      : secondaryOkOnSurface
+        ? brand.secondaryColor
+        : brand.themeColors.foreground
+    : null
+  const literalHero = literal
+    ? `linear-gradient(135deg, ${brand.themeColors.background} 0%, ${brand.themeColors.backgroundAlt} 100%)`
+    : null
 
   useEffect(() => {
     const fetchFirstRaffle = async () => {
@@ -54,7 +74,10 @@ const Hero = () => {
   };
 
   return (
-    <section className="relative min-h-[85vh] flex items-center bg-gradient-to-br from-background via-background-alt to-accent overflow-hidden">
+    <section
+      className={literal ? 'relative min-h-[85vh] flex items-center overflow-hidden' : 'relative min-h-[85vh] flex items-center bg-gradient-to-br from-background via-background-alt to-accent overflow-hidden'}
+      style={literalHero ? { background: literalHero } : undefined}
+    >
       {/* Decorative background elements */}
       <div className="absolute inset-0 stars-container">
         {[...Array(25)].map((_, i) => (
@@ -78,14 +101,14 @@ const Hero = () => {
 
       <div className="container mx-auto px-4 relative z-10 py-12 md:py-16 lg:py-20">
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
-            {/* Brand copy — after the raffle on mobile, left column on desktop */}
+          <div className={showCopy ? 'grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center' : 'flex justify-center'}>
+            {showCopy && (
             <div className="order-2 lg:order-1 text-center lg:text-left space-y-6 animate-fade-in-up">
               <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold leading-tight">
-                <span className={titleClass}>{brand.name}</span>
+                <span className={literal ? undefined : titleClass} style={literalTitle ? { color: literalTitle } : undefined}>{brand.name}</span>
               </h1>
 
-              <p className="text-lg sm:text-xl text-muted-foreground max-w-lg mx-auto lg:mx-0 leading-relaxed">
+              <p className="text-lg sm:text-xl text-muted-foreground max-w-lg mx-auto lg:mx-0 leading-relaxed" style={literal ? { color: brand.themeColors.muted } : undefined}>
                 {brand.tagline ||
                   'Participa en rifas de productos premium por una fracción de su precio. Sorteos transparentes y premios reales.'}
               </p>
@@ -102,6 +125,7 @@ const Hero = () => {
                   Ver Rifas Activas
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
+                {showHowItWorks && (
                 <Button
                   size="lg"
                   variant="outline"
@@ -112,6 +136,7 @@ const Hero = () => {
                 >
                   Cómo Funciona
                 </Button>
+                )}
               </div>
 
               {/* Quick stats */}
@@ -130,9 +155,9 @@ const Hero = () => {
                 </div>
               </div>
             </div>
+            )}
 
-            {/* Featured raffle — first on mobile, right column on desktop */}
-            <div className="order-1 lg:order-2 flex justify-center lg:justify-end animate-fade-in-up-delayed">
+            <div className={showCopy ? 'order-1 lg:order-2 flex justify-center lg:justify-end animate-fade-in-up-delayed' : 'flex justify-center w-full animate-fade-in-up'}>
               {loading ? (
                 <RaffleCardSkeleton className="max-w-md" />
               ) : firstRaffle ? (

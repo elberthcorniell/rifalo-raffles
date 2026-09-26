@@ -60,18 +60,25 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function Home() {
+export default async function Home() {
+  const org = await getOrgFromHeaders()
+  const brand = org ? getOrgBrand(org) : null
+  const showHeroCopy = brand?.showHeroCopy !== false
+  const showHowItWorks = brand?.showHowItWorks !== false
+  const showTrustBenefits = brand?.showTrustBenefits !== false
+  const showTestimonials = brand?.showTestimonials !== false
+
   return (
     <div className="min-h-screen bg-background font-poppins pb-20 md:pb-0">
       <Header />
       <main>
-        <Hero />
-        <HowItWorks />
+        <Hero showCopy={showHeroCopy} showHowItWorks={showHowItWorks} />
+        {showHowItWorks && <HowItWorks />}
         <RaffleGrid />
-        <TrustBenefits />
-        <Testimonials />
+        {showTrustBenefits && <TrustBenefits />}
+        {showTestimonials && <Testimonials />}
       </main>
-      <Footer />
+      <Footer showHowItWorks={showHowItWorks} showTestimonials={showTestimonials} />
       <StickyRaffleBanner />
     </div>
   );

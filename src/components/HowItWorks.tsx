@@ -1,5 +1,7 @@
-import { Search, Ticket, Trophy } from "lucide-react";
+'use client'
 
+import { Search, Ticket, Trophy } from "lucide-react";
+import { useOrgBrand } from "@/components/OrgBrandProvider";
 const steps = [
   {
     icon: Search,
@@ -25,8 +27,15 @@ const steps = [
 ];
 
 const HowItWorks = () => {
+  const brand = useOrgBrand();
+  const literal = brand.theme === 'custom';
+
   return (
-    <section id="como-funciona" className="py-20 bg-background-alt">
+    <section
+      id="como-funciona"
+      className={literal ? "py-20" : "py-20 bg-background-alt"}
+      style={literal ? { backgroundColor: brand.themeColors.backgroundAlt, color: brand.themeColors.foreground } : undefined}
+    >
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
           <p className="text-secondary font-semibold text-sm uppercase tracking-wider mb-3">
@@ -60,7 +69,7 @@ const HowItWorks = () => {
                 <h3 className="text-xl font-bold text-foreground mb-3">
                   {step.title}
                 </h3>
-                <p className="text-muted-foreground text-sm leading-relaxed max-w-xs">
+                <p className="text-muted-foreground text-sm leading-relaxed max-w-xs" style={literal ? { color: brand.themeColors.muted } : undefined}>
                   {step.description}
                 </p>
               </div>

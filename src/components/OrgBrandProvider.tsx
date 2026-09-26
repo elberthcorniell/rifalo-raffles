@@ -10,9 +10,10 @@ import {
 } from 'react'
 import { usePathname } from 'next/navigation'
 import type { OrgBrand, Organization } from '@/types/org'
-import { DEFAULT_ORG_THEME, DEFAULT_PRIMARY_COLOR, DEFAULT_SECONDARY_COLOR } from '@/types/org'
+import { DEFAULT_ORG_THEME, DEFAULT_PRIMARY_COLOR, DEFAULT_SECONDARY_COLOR, DEFAULT_THEME_COLORS } from '@/types/org'
 import { PLATFORM, getPlatformUrl, getRootDomain } from '@/lib/constants'
-import { getBrandCssVars } from '@/lib/colors'
+import { getBrandCssVars, getThemeSurfaceCssVars, THEME_SURFACE_KEYS } from '@/lib/colors'
+import { DEFAULT_SITE_FONT, fontFamilyValue, googleFontsHref } from '@/lib/fonts'
 
 interface OrgContextValue {
   org: Organization | null
@@ -39,6 +40,15 @@ const fallbackBrand: OrgBrand = {
   primaryColor: DEFAULT_PRIMARY_COLOR,
   secondaryColor: DEFAULT_SECONDARY_COLOR,
   theme: DEFAULT_ORG_THEME,
+  themeColors: DEFAULT_THEME_COLORS,
+  showHeroCopy: true,
+  showHowItWorks: true,
+  showTrustBenefits: true,
+  showTestimonials: true,
+  footerBgColor: DEFAULT_PRIMARY_COLOR,
+  footerTextColor: '#FFFFFF',
+  headingFont: DEFAULT_SITE_FONT,
+  bodyFont: DEFAULT_SITE_FONT,
 }
 
 const OrgContext = createContext<OrgContextValue>({
@@ -58,6 +68,15 @@ function isStorefrontPath(pathname: string | null) {
   )
 }
 
+const SITE_FONTS_LINK_ID = 'site-fonts'
+
+function clearStorefrontFonts(root: HTMLElement) {
+  root.classList.remove('storefront')
+  root.style.removeProperty('--font-heading')
+  root.style.removeProperty('--font-body')
+  document.getElementById(SITE_FONTS_LINK_ID)?.remove()
+}
+
 function applyBrandTheme(brand: OrgBrand | null, applyAppearance: boolean) {
   if (typeof document === 'undefined') return
   const root = document.documentElement
@@ -73,14 +92,42 @@ function applyBrandTheme(brand: OrgBrand | null, applyAppearance: boolean) {
       root.style.removeProperty(key)
     }
     root.classList.remove('dark')
+    for (const key of THEME_SURFACE_KEYS) root.style.removeProperty(key)
+    clearStorefrontFonts(root)
     return
   }
   const vars = getBrandCssVars(brand.primaryColor, brand.secondaryColor)
   for (const [key, value] of Object.entries(vars)) {
     root.style.setProperty(key, value)
   }
-  // Admin / platform stay light; only the public storefront follows org theme
+  // Admin / platform stay light and on Poppins; only the public storefront follows org theme and fonts
   root.classList.toggle('dark', applyAppearance && brand.theme === 'dark')
+  const useCustom = applyAppearance && brand.theme === 'custom'
+  if (useCustom) {
+    const surfaces = getThemeSurfaceCssVars(brand.themeColors)
+    for (const [key, value] of Object.entries(surfaces)) {
+      root.style.setProperty(key, value)
+    }
+  } else {
+    for (const key of THEME_SURFACE_KEYS) {
+      root.style.removeProperty(key)
+    }
+  }
+  if (!applyAppearance) {
+    clearStorefrontFonts(root)
+    return
+  }
+  root.classList.add('storefront')
+  root.style.setProperty('--font-heading', fontFamilyValue(brand.headingFont))
+  root.style.setProperty('--font-body', fontFamilyValue(brand.bodyFont))
+  let link = document.getElementById(SITE_FONTS_LINK_ID) as HTMLLinkElement | null
+  if (!link) {
+    link = document.createElement('link')
+    link.id = SITE_FONTS_LINK_ID
+    link.rel = 'stylesheet'
+    document.head.appendChild(link)
+  }
+  link.href = googleFontsHref([brand.headingFont, brand.bodyFont])
 }
 
 export function OrgBrandProvider({
@@ -131,6 +178,21 @@ export function OrgBrandProvider({
 
   return (
     <OrgContext.Provider value={{ org, brand, loading, setBrandState, refreshBrand }}>
+      {children}
+    </OrgContext.Provider>
+  )
+}
+
+export function OrgBrandScope({
+  brand,
+  children,
+}: {
+  brand: OrgBrand
+  children: ReactNode
+}) {
+  const parent = useContext(OrgContext)
+  return (
+    <OrgContext.Provider value={{ ...parent, brand }}>
       {children}
     </OrgContext.Provider>
   )

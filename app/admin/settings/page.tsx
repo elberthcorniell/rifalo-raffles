@@ -6,27 +6,46 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
-import { Loader2, ExternalLink, Pipette, Sun, Moon } from 'lucide-react'
-import { getRootDomain, getTenantUrl } from '@/lib/constants'
+import { Loader2, ExternalLink, Pipette, Sun, Moon, Palette } from 'lucide-react'
+import { getTenantUrl } from '@/lib/constants'
 import { useOrg } from '@/components/OrgBrandProvider'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion'
 import {
   DEFAULT_CHECKOUT_FIELDS,
   DEFAULT_ORG_THEME,
   DEFAULT_PRIMARY_COLOR,
   DEFAULT_SECONDARY_COLOR,
+  DEFAULT_THEME_COLORS,
   normalizeCheckoutFields,
   normalizeOrgTheme,
+  normalizeThemeColors,
   type CheckoutFieldKey,
   type CheckoutFields,
   type OrgTheme,
+  type ThemeColors,
 } from '@/types/org'
 import {
+  contrastRatio,
   evaluateBrandContrast,
   extractPaletteFromImage,
   isHexColor,
+  resolveFooterColors,
 } from '@/lib/colors'
 import { cn } from '@/lib/utils'
+import { SitePreview } from '@/components/admin/SitePreview'
+import {
+  DEFAULT_SITE_FONT,
+  SITE_FONTS,
+  fontFamilyValue,
+  googleFontsHref,
+  normalizeSiteFont,
+} from '@/lib/fonts'
 
 export default function AdminSettingsPage() {
   const { setBrandState } = useOrg()
@@ -35,6 +54,7 @@ export default function AdminSettingsPage() {
   const [uploading, setUploading] = useState(false)
   const [extracting, setExtracting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [openSections, setOpenSections] = useState<string[]>([])
   const [success, setSuccess] = useState<string | null>(null)
   const [slug, setSlug] = useState('')
   const [name, setName] = useState('')
@@ -46,6 +66,15 @@ export default function AdminSettingsPage() {
   const [primaryColor, setPrimaryColor] = useState(DEFAULT_PRIMARY_COLOR)
   const [secondaryColor, setSecondaryColor] = useState(DEFAULT_SECONDARY_COLOR)
   const [theme, setTheme] = useState<OrgTheme>(DEFAULT_ORG_THEME)
+  const [themeColors, setThemeColors] = useState<ThemeColors>(DEFAULT_THEME_COLORS)
+  const [showHeroCopy, setShowHeroCopy] = useState(true)
+  const [showHowItWorks, setShowHowItWorks] = useState(true)
+  const [showTrustBenefits, setShowTrustBenefits] = useState(true)
+  const [showTestimonials, setShowTestimonials] = useState(true)
+  const [footerBgColor, setFooterBgColor] = useState(DEFAULT_PRIMARY_COLOR)
+  const [footerTextColor, setFooterTextColor] = useState('#FFFFFF')
+  const [headingFont, setHeadingFont] = useState(DEFAULT_SITE_FONT)
+  const [bodyFont, setBodyFont] = useState(DEFAULT_SITE_FONT)
   const [checkoutFields, setCheckoutFields] = useState<CheckoutFields>(
     DEFAULT_CHECKOUT_FIELDS
   )
@@ -54,8 +83,6 @@ export default function AdminSettingsPage() {
   const [twitterUrl, setTwitterUrl] = useState('')
   const [logoPath, setLogoPath] = useState<string | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
-  const [customDomain, setCustomDomain] = useState('')
-  const [plan, setPlan] = useState<'free' | 'plus' | 'unlimited'>('free')
 
   useEffect(() => {
     ;(async () => {
@@ -74,14 +101,26 @@ export default function AdminSettingsPage() {
           setPrimaryColor(o.primary_color || DEFAULT_PRIMARY_COLOR)
           setSecondaryColor(o.secondary_color || DEFAULT_SECONDARY_COLOR)
           setTheme(normalizeOrgTheme(o.theme))
+          setThemeColors(normalizeThemeColors(o.theme_colors))
+          setShowHeroCopy(o.show_hero_copy !== false)
+          setShowHowItWorks(o.show_how_it_works !== false)
+          setShowTrustBenefits(o.show_trust_benefits !== false)
+          setShowTestimonials(o.show_testimonials !== false)
+          const footer = resolveFooterColors(
+            o.primary_color || DEFAULT_PRIMARY_COLOR,
+            o.footer_bg_color,
+            o.footer_text_color
+          )
+          setFooterBgColor(footer.bg)
+          setFooterTextColor(footer.text)
+          setHeadingFont(normalizeSiteFont(o.heading_font))
+          setBodyFont(normalizeSiteFont(o.body_font))
           setCheckoutFields(normalizeCheckoutFields(o.checkout_fields))
           setFacebookUrl(o.facebook_url || '')
           setInstagramUrl(o.instagram_url || '')
           setTwitterUrl(o.twitter_url || '')
           setLogoPath(o.logo_path)
           setLogoPreview(json.data.brand?.logo || null)
-          setCustomDomain(o.custom_domain || '')
-          setPlan(o.plan === 'plus' || o.plan === 'unlimited' ? o.plan : 'free')
         } else {
           setError(json.error || 'Error al cargar')
         }
@@ -147,9 +186,16 @@ export default function AdminSettingsPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSaving(true)
     setError(null)
     setSuccess(null)
+    if (!name.trim()) {
+      setError('El nombre de la marca es obligatorio')
+      setOpenSections((current) =>
+        current.includes('identidad') ? current : ['identidad', ...current]
+      )
+      return
+    }
+    setSaving(true)
     try {
       const res = await fetch('/api/admin/org', {
         method: 'PATCH',
@@ -165,11 +211,19 @@ export default function AdminSettingsPage() {
           primaryColor,
           secondaryColor,
           theme,
+          themeColors,
+          showHeroCopy,
+          showHowItWorks,
+          showTrustBenefits,
+          showTestimonials,
+          footerBgColor,
+          footerTextColor,
+          headingFont,
+          bodyFont,
           checkoutFields,
           facebookUrl,
           instagramUrl,
           twitterUrl,
-          customDomain,
         }),
       })
       const json = await res.json()
@@ -177,7 +231,7 @@ export default function AdminSettingsPage() {
         setError(json.error || 'Error al guardar')
         return
       }
-      setSuccess('Marca actualizada. Ya se refleja en tu sitio público.')
+      setSuccess('Sitio actualizado. Ya se refleja en tu sitio público.')
       setLogoPreview(json.data.brand?.logo || logoPreview)
       setBrandState(json.data.org, json.data.brand)
     } catch {
@@ -199,16 +253,45 @@ export default function AdminSettingsPage() {
 
   const contrastIssues =
     isHexColor(primaryColor) && isHexColor(secondaryColor)
-      ? evaluateBrandContrast(primaryColor, secondaryColor, theme)
+      ? evaluateBrandContrast(primaryColor, secondaryColor, theme, themeColors.background)
       : []
 
+  const preview = (
+    <SitePreview
+      name={name}
+      tagline={tagline}
+      logo={logoPreview}
+      email={email}
+      phone={phone}
+      location={location}
+      primaryColor={primaryColor}
+      secondaryColor={secondaryColor}
+      theme={theme}
+      themeColors={themeColors}
+      slug={slug}
+      siteUrl={siteUrl}
+      facebookUrl={facebookUrl}
+      instagramUrl={instagramUrl}
+      twitterUrl={twitterUrl}
+      showHeroCopy={showHeroCopy}
+      showHowItWorks={showHowItWorks}
+      showTrustBenefits={showTrustBenefits}
+      showTestimonials={showTestimonials}
+      footerBgColor={footerBgColor}
+      footerTextColor={footerTextColor}
+      headingFont={headingFont}
+      bodyFont={bodyFont}
+    />
+  )
+
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] lg:items-start lg:gap-8">
+    <div className="max-w-3xl space-y-6 lg:max-w-none">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#0B2447]">Marca y sitio</h1>
+          <h1 className="text-2xl font-bold text-[#0B2447]">Sitio web</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Personaliza cómo se ve tu tienda pública. El subdominio no se puede cambiar.
+            Personaliza cómo se ve tu tienda pública.
           </p>
         </div>
         <Button variant="outline" asChild>
@@ -219,7 +302,7 @@ export default function AdminSettingsPage() {
         </Button>
       </div>
 
-      <Card className="p-4 overflow-hidden">
+      <Card className="p-4 overflow-hidden lg:hidden">
         <p className="text-xs uppercase tracking-wide text-muted-foreground mb-3">Vista previa</p>
         <div
           className={cn(
@@ -248,54 +331,28 @@ export default function AdminSettingsPage() {
               {tagline || 'Tu eslogan aparecerá aquí'}
             </p>
             <p className="text-[11px] uppercase tracking-wider text-white/60 mt-1">
-              Sitio {theme === 'dark' ? 'oscuro' : 'claro'}
+              Sitio {theme === 'dark' ? 'oscuro' : theme === 'custom' ? 'personalizado' : 'claro'}
             </p>
           </div>
         </div>
       </Card>
 
       <Card className="p-6">
-        <form onSubmit={handleSave} className="space-y-6">
-          <section className="space-y-4">
-            <h2 className="font-semibold text-[#0B2447]">Identidad</h2>
-            <div className="space-y-2">
-              <Label>Subdominio</Label>
-              <Input
-                value={`${slug}.${getRootDomain()}`}
-                disabled
-                className="font-mono bg-slate-50"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="customDomain">Dominio personalizado</Label>
-              <Input
-                id="customDomain"
-                value={customDomain}
-                onChange={(e) => setCustomDomain(e.target.value)}
-                placeholder="rifas.midominio.com"
-                disabled={plan !== 'unlimited'}
-                className="font-mono"
-              />
-              {plan !== 'unlimited' ? (
-                <p className="text-xs text-muted-foreground">
-                  Disponible en el plan Ilimitado.{' '}
-                  <Link href="/admin/billing" className="text-[#1976D2] hover:underline">
-                    Mejorar plan
-                  </Link>
-                </p>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  Crea un CNAME apuntando a{' '}
-                  <span className="font-mono">{getRootDomain()}</span>. No
-                  configuramos SSL automáticamente.
-                </p>
-              )}
-            </div>
-
+        <form onSubmit={handleSave}>
+          <Accordion
+            type="multiple"
+            value={openSections}
+            onValueChange={setOpenSections}
+            className="w-full"
+          >
+          <AccordionItem value="identidad" className="border-slate-200">
+            <AccordionTrigger className="py-4 text-base font-semibold text-[#0B2447] hover:no-underline">
+              Identidad
+            </AccordionTrigger>
+            <AccordionContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Nombre de la marca</Label>
-              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
+              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
             </div>
 
             <div className="space-y-2">
@@ -328,11 +385,69 @@ export default function AdminSettingsPage() {
                 Sube la imagen y luego guarda los cambios.
               </p>
             </div>
-          </section>
+            </AccordionContent>
+          </AccordionItem>
 
-          <section className="space-y-4 border-t pt-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <h2 className="font-semibold text-[#0B2447]">Colores</h2>
+          <AccordionItem value="secciones" className="border-slate-200">
+            <AccordionTrigger className="py-4 text-base font-semibold text-[#0B2447] hover:no-underline">
+              Secciones
+            </AccordionTrigger>
+            <AccordionContent className="space-y-4">
+            <p className="text-xs text-muted-foreground -mt-2">
+              Elige qué bloques aparecen en el inicio. Ocultar una sección no borra su contenido.
+            </p>
+            {(
+              [
+                {
+                  checked: showHeroCopy,
+                  onChange: setShowHeroCopy,
+                  title: 'Texto junto a la rifa destacada',
+                  hint: 'Nombre, eslogan, botones y estadísticas. Si lo ocultas, la portada muestra solo la rifa.',
+                },
+                {
+                  checked: showHowItWorks,
+                  onChange: setShowHowItWorks,
+                  title: 'Cómo funciona',
+                  hint: 'Los tres pasos debajo del inicio. Si la ocultas, también se quita su enlace del footer.',
+                },
+                {
+                  checked: showTrustBenefits,
+                  onChange: setShowTrustBenefits,
+                  title: 'Por qué elegirnos',
+                  hint: 'Sorteo transparente, envío, pago seguro y soporte.',
+                },
+                {
+                  checked: showTestimonials,
+                  onChange: setShowTestimonials,
+                  title: 'Testimonios',
+                  hint: 'Las opiniones de ganadores. Si la ocultas, no se muestran aunque existan, y se quita el enlace del footer.',
+                },
+              ] as const
+            ).map((item) => (
+              <label
+                key={item.title}
+                className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-3 cursor-pointer"
+              >
+                <Checkbox
+                  checked={item.checked}
+                  onCheckedChange={(checked) => item.onChange(checked === true)}
+                  className="mt-0.5"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-[#0B2447]">{item.title}</span>
+                  <span className="block text-xs text-muted-foreground">{item.hint}</span>
+                </span>
+              </label>
+            ))}
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="colores" className="border-slate-200">
+            <AccordionTrigger className="py-4 text-base font-semibold text-[#0B2447] hover:no-underline">
+              Colores
+            </AccordionTrigger>
+            <AccordionContent className="space-y-4">
+            <div className="flex justify-end">
               <Button
                 type="button"
                 variant="outline"
@@ -353,7 +468,7 @@ export default function AdminSettingsPage() {
             </p>
             <div className="space-y-2">
               <Label>Apariencia del sitio</Label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => setTheme('light')}
@@ -380,10 +495,59 @@ export default function AdminSettingsPage() {
                   <Moon className="h-4 w-4" />
                   Oscuro
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setTheme('custom')}
+                  className={cn(
+                    'flex items-center justify-center gap-2 rounded-lg border px-3 py-3 text-sm font-medium transition-colors',
+                    theme === 'custom'
+                      ? 'border-[#0B2447] bg-[#0B2447] text-white'
+                      : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                  )}
+                >
+                  <Palette className="h-4 w-4" />
+                  Personalizado
+                </button>
               </div>
               <p className="text-xs text-muted-foreground">
                 Fondos y textos del sitio público. El panel de admin siempre queda claro.
               </p>
+              {theme === 'custom' && (
+                <div className="grid sm:grid-cols-2 gap-4 pt-2">
+                  {(
+                    [
+                      ['background', 'Fondo'],
+                      ['backgroundAlt', 'Fondo de secciones'],
+                      ['foreground', 'Texto'],
+                      ['muted', 'Texto secundario'],
+                      ['card', 'Tarjetas'],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <div key={key} className="space-y-2">
+                      <Label htmlFor={`theme-${key}`}>{label}</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="color"
+                          value={themeColors[key]}
+                          onChange={(e) =>
+                            setThemeColors((current) => ({ ...current, [key]: e.target.value }))
+                          }
+                          className="w-14 h-10 p-1 cursor-pointer"
+                        />
+                        <Input
+                          id={`theme-${key}`}
+                          value={themeColors[key]}
+                          onChange={(e) =>
+                            setThemeColors((current) => ({ ...current, [key]: e.target.value }))
+                          }
+                          className="font-mono"
+                          pattern="^#[0-9A-Fa-f]{6}$"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -403,7 +567,7 @@ export default function AdminSettingsPage() {
                     pattern="^#[0-9A-Fa-f]{6}$"
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">Fondos, footer, textos fuertes</p>
+                <p className="text-xs text-muted-foreground">Fondos y textos fuertes</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="secondaryColor">Color de acento</Label>
@@ -424,7 +588,50 @@ export default function AdminSettingsPage() {
                 </div>
                 <p className="text-xs text-muted-foreground">Botones y destacados</p>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="footerBgColor">Fondo del footer</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="color"
+                    value={isHexColor(footerBgColor) ? footerBgColor : DEFAULT_PRIMARY_COLOR}
+                    onChange={(e) => setFooterBgColor(e.target.value)}
+                    className="w-14 h-10 p-1 cursor-pointer"
+                  />
+                  <Input
+                    id="footerBgColor"
+                    value={footerBgColor}
+                    onChange={(e) => setFooterBgColor(e.target.value)}
+                    className="font-mono"
+                    pattern="^#[0-9A-Fa-f]{6}$"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="footerTextColor">Texto del footer</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="color"
+                    value={isHexColor(footerTextColor) ? footerTextColor : '#FFFFFF'}
+                    onChange={(e) => setFooterTextColor(e.target.value)}
+                    className="w-14 h-10 p-1 cursor-pointer"
+                  />
+                  <Input
+                    id="footerTextColor"
+                    value={footerTextColor}
+                    onChange={(e) => setFooterTextColor(e.target.value)}
+                    className="font-mono"
+                    pattern="^#[0-9A-Fa-f]{6}$"
+                  />
+                </div>
+              </div>
             </div>
+            {isHexColor(footerBgColor) &&
+              isHexColor(footerTextColor) &&
+              (contrastRatio(footerTextColor, footerBgColor) ?? 0) < 4.5 && (
+                <p className="text-sm text-amber-900 bg-amber-50 border border-amber-300 rounded-lg px-4 py-3">
+                  El texto del footer no contrasta lo suficiente con el fondo.
+                </p>
+              )}
             {contrastIssues.length > 0 && (
               <div
                 className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 space-y-2"
@@ -454,14 +661,74 @@ export default function AdminSettingsPage() {
                 <p className="text-xs text-amber-800/80">
                   {theme === 'dark'
                     ? 'En sitio oscuro usa un primario más claro o un acento más vivo. Puedes guardar igual: el sitio intentará compensar títulos y botones.'
-                    : 'En sitio claro usa un primario más oscuro o un acento con más contraste.'}
+                    : theme === 'custom'
+                      ? 'Ajusta el fondo del tema, o cambia el primario y el acento, hasta que el texto se lea bien.'
+                      : 'En sitio claro usa un primario más oscuro o un acento con más contraste.'}
                 </p>
               </div>
             )}
-          </section>
+            </AccordionContent>
+          </AccordionItem>
 
-          <section className="space-y-4 border-t pt-6">
-            <h2 className="font-semibold text-[#0B2447]">Contacto</h2>
+          <AccordionItem value="tipografia" className="border-slate-200">
+            <AccordionTrigger className="py-4 text-base font-semibold text-[#0B2447] hover:no-underline">
+              Tipografía
+            </AccordionTrigger>
+            <AccordionContent className="space-y-4">
+            <p className="text-xs text-muted-foreground -mt-2">
+              Poppins sigue siendo la fuente por defecto. Los títulos y los párrafos se pueden cambiar por separado.
+            </p>
+            <link rel="stylesheet" href={googleFontsHref(SITE_FONTS.map((font) => font.name))} />
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="headingFont">Títulos</Label>
+                <select
+                  id="headingFont"
+                  value={headingFont}
+                  onChange={(e) => setHeadingFont(normalizeSiteFont(e.target.value))}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  style={{ fontFamily: fontFamilyValue(headingFont) }}
+                >
+                  {SITE_FONTS.map((font) => (
+                    <option
+                      key={font.name}
+                      value={font.name}
+                      style={{ fontFamily: fontFamilyValue(font.name) }}
+                    >
+                      {font.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="bodyFont">Párrafos</Label>
+                <select
+                  id="bodyFont"
+                  value={bodyFont}
+                  onChange={(e) => setBodyFont(normalizeSiteFont(e.target.value))}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  style={{ fontFamily: fontFamilyValue(bodyFont) }}
+                >
+                  {SITE_FONTS.map((font) => (
+                    <option
+                      key={font.name}
+                      value={font.name}
+                      style={{ fontFamily: fontFamilyValue(font.name) }}
+                    >
+                      {font.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="contacto" className="border-slate-200">
+            <AccordionTrigger className="py-4 text-base font-semibold text-[#0B2447] hover:no-underline">
+              Contacto
+            </AccordionTrigger>
+            <AccordionContent className="space-y-4">
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email de contacto</Label>
@@ -496,10 +763,14 @@ export default function AdminSettingsPage() {
                 placeholder="Recibe avisos de nuevas compras"
               />
             </div>
-          </section>
+            </AccordionContent>
+          </AccordionItem>
 
-          <section className="space-y-4 border-t pt-6">
-            <h2 className="font-semibold text-[#0B2447]">Datos del cliente</h2>
+          <AccordionItem value="cliente" className="border-slate-200">
+            <AccordionTrigger className="py-4 text-base font-semibold text-[#0B2447] hover:no-underline">
+              Datos del cliente
+            </AccordionTrigger>
+            <AccordionContent className="space-y-4">
             <p className="text-xs text-muted-foreground -mt-2">
               Elige qué pides al comprar boletos. Nombre y WhatsApp vienen activos por defecto.
             </p>
@@ -548,10 +819,14 @@ export default function AdminSettingsPage() {
                 )
               })}
             </div>
-          </section>
+            </AccordionContent>
+          </AccordionItem>
 
-          <section className="space-y-4 border-t pt-6">
-            <h2 className="font-semibold text-[#0B2447]">Redes sociales</h2>
+          <AccordionItem value="redes" className="border-slate-200">
+            <AccordionTrigger className="py-4 text-base font-semibold text-[#0B2447] hover:no-underline">
+              Redes sociales
+            </AccordionTrigger>
+            <AccordionContent className="space-y-4">
             <div className="space-y-3">
               <div className="space-y-2">
                 <Label htmlFor="facebook">Facebook</Label>
@@ -581,7 +856,9 @@ export default function AdminSettingsPage() {
                 />
               </div>
             </div>
-          </section>
+            </AccordionContent>
+          </AccordionItem>
+          </Accordion>
 
           {error && (
             <p className="text-sm text-red-600 bg-red-50 rounded-md px-3 py-2">{error}</p>
@@ -590,13 +867,13 @@ export default function AdminSettingsPage() {
             <p className="text-sm text-green-700 bg-green-50 rounded-md px-3 py-2">{success}</p>
           )}
 
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3 pt-6">
             <Button
               type="submit"
               className="bg-[#1976D2] hover:bg-[#1565C0]"
               disabled={saving || uploading || extracting}
             >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Guardar marca'}
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Guardar sitio'}
             </Button>
             <Button type="button" variant="ghost" asChild>
               <Link href="/admin">Volver al dashboard</Link>
@@ -604,6 +881,16 @@ export default function AdminSettingsPage() {
           </div>
         </form>
       </Card>
+    </div>
+    <aside className="hidden lg:block sticky top-8">
+      <p className="text-xs uppercase tracking-wide text-muted-foreground mb-3">
+        Vista previa del sitio
+      </p>
+      {preview}
+      <p className="text-xs text-muted-foreground mt-2">
+        Se actualiza mientras editas. Guarda para publicarlo.
+      </p>
+    </aside>
     </div>
   )
 }

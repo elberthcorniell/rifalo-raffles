@@ -7,7 +7,8 @@ import {
   Ticket,
   ShoppingCart,
   Building2,
-  Settings,
+  Globe,
+  Link2,
   LogOut,
   Menu,
   MessageSquareQuote,
@@ -35,7 +36,8 @@ const nav = [
   { href: '/admin/testimonials', label: 'Testimonios', icon: MessageSquareQuote },
   { href: '/admin/billing', label: 'Facturación', icon: CreditCard },
   { href: '/admin/team', label: 'Equipo', icon: Users },
-  { href: '/admin/settings', label: 'Marca', icon: Settings },
+  { href: '/admin/settings', label: 'Sitio web', icon: Globe },
+  { href: '/admin/domain', label: 'Dominio', icon: Link2 },
 ]
 
 export function AdminShell({

@@ -8,7 +8,9 @@ import {
   DEFAULT_SECONDARY_COLOR,
   normalizeCheckoutFields,
   normalizeOrgTheme,
+  normalizeThemeColors,
 } from '@/types/org'
+import { isSiteFont } from '@/lib/fonts'
 
 export async function GET() {
   const auth = await requireOrgAdmin()
@@ -78,6 +80,61 @@ export async function PATCH(request: Request) {
   }
   if (body.theme != null) {
     updates.theme = normalizeOrgTheme(body.theme)
+  }
+  if (body.themeColors != null) {
+    updates.theme_colors = normalizeThemeColors(body.themeColors)
+  }
+  if (body.showHeroCopy != null) {
+    updates.show_hero_copy = body.showHeroCopy === true
+  }
+  if (body.showHowItWorks != null) {
+    updates.show_how_it_works = body.showHowItWorks === true
+  }
+  if (body.showTrustBenefits != null) {
+    updates.show_trust_benefits = body.showTrustBenefits === true
+  }
+  if (body.showTestimonials != null) {
+    updates.show_testimonials = body.showTestimonials === true
+  }
+  if (body.footerBgColor != null) {
+    const c = normalizeHexColor(String(body.footerBgColor), DEFAULT_PRIMARY_COLOR)
+    if (!isHexColor(c)) {
+      return NextResponse.json(
+        { success: false, error: 'Color de fondo del footer inválido (usa #RRGGBB)' },
+        { status: 400 }
+      )
+    }
+    updates.footer_bg_color = c
+  }
+  if (body.footerTextColor != null) {
+    const c = normalizeHexColor(String(body.footerTextColor), '#FFFFFF')
+    if (!isHexColor(c)) {
+      return NextResponse.json(
+        { success: false, error: 'Color de texto del footer inválido (usa #RRGGBB)' },
+        { status: 400 }
+      )
+    }
+    updates.footer_text_color = c
+  }
+  if (body.headingFont != null) {
+    const font = String(body.headingFont).trim()
+    if (!isSiteFont(font)) {
+      return NextResponse.json(
+        { success: false, error: 'Fuente de títulos no permitida' },
+        { status: 400 }
+      )
+    }
+    updates.heading_font = font
+  }
+  if (body.bodyFont != null) {
+    const font = String(body.bodyFont).trim()
+    if (!isSiteFont(font)) {
+      return NextResponse.json(
+        { success: false, error: 'Fuente de párrafos no permitida' },
+        { status: 400 }
+      )
+    }
+    updates.body_font = font
   }
   if (body.checkoutFields != null) {
     updates.checkout_fields = normalizeCheckoutFields(body.checkoutFields)

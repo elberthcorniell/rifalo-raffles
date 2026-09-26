@@ -9,7 +9,8 @@ import "react-international-phone/style.css";
 import { PLATFORM, getPlatformUrl } from "@/lib/constants";
 import { getOrgFromHeaders, getOrgBrand } from "@/lib/tenant";
 import { PATHNAME_HEADER } from "@/lib/tenant-host";
-import { getBrandCssVars } from "@/lib/colors";
+import { getBrandCssVars, getThemeSurfaceCssVars } from "@/lib/colors";
+import { fontFamilyValue, googleFontsHref } from "@/lib/fonts";
 
 export const metadata: Metadata = {
   title: {
@@ -45,19 +46,35 @@ export default async function RootLayout({
   const org = await getOrgFromHeaders();
   const brand = org ? getOrgBrand(org) : null;
   const pathname = (await headers()).get(PATHNAME_HEADER) || "";
-  const applyDark =
-    !!brand && isStorefrontPath(pathname) && brand.theme === "dark";
+  const applyStorefront = !!brand && isStorefrontPath(pathname);
+  const applyDark = applyStorefront && brand.theme === "dark";
   const brandStyle = brand
-    ? getBrandCssVars(brand.primaryColor, brand.secondaryColor)
+    ? {
+        ...getBrandCssVars(brand.primaryColor, brand.secondaryColor),
+        ...(applyStorefront
+          ? {
+              "--font-heading": fontFamilyValue(brand.headingFont),
+              "--font-body": fontFamilyValue(brand.bodyFont),
+              ...(brand.theme === "custom" ? getThemeSurfaceCssVars(brand.themeColors) : {}),
+            }
+          : {}),
+      }
     : undefined;
 
   return (
     <html
       lang="es"
-      className={applyDark ? "dark" : undefined}
+      className={[applyDark ? "dark" : "", applyStorefront ? "storefront" : ""].filter(Boolean).join(" ") || undefined}
       style={brandStyle}
       suppressHydrationWarning
     >
+      {applyStorefront && (
+        <link
+          id="site-fonts"
+          rel="stylesheet"
+          href={googleFontsHref([brand.headingFont, brand.bodyFont])}
+        />
+      )}
       <body>
         <Providers initialOrg={org} initialBrand={brand}>
           <ClientProviders />

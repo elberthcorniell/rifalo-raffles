@@ -1,5 +1,8 @@
+'use client'
+
 import { Eye, Truck, ShieldCheck, Headphones } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { useOrgBrand } from "@/components/OrgBrandProvider";
 
 const benefits = [
   {
@@ -29,8 +32,14 @@ const benefits = [
 ];
 
 const TrustBenefits = () => {
+  const brand = useOrgBrand();
+  const literal = brand.theme === 'custom';
+
   return (
-    <section className="py-20 bg-background">
+    <section
+      className={literal ? "py-20" : "py-20 bg-background"}
+      style={literal ? { backgroundColor: brand.themeColors.background, color: brand.themeColors.foreground } : undefined}
+    >
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
           <p className="text-secondary font-semibold text-sm uppercase tracking-wider mb-3">
@@ -49,6 +58,7 @@ const TrustBenefits = () => {
             <Card
               key={benefit.title}
               className="p-6 bg-gradient-card border-card-border text-center group hover:shadow-elegant transition-all duration-300 hover:-translate-y-1"
+              style={literal ? { background: brand.themeColors.card, color: brand.themeColors.foreground } : undefined}
             >
               <div className="w-14 h-14 rounded-xl bg-secondary/10 flex items-center justify-center mx-auto mb-5 group-hover:bg-secondary/20 transition-colors">
                 <benefit.icon className="w-7 h-7 text-secondary" />
@@ -56,7 +66,7 @@ const TrustBenefits = () => {
               <h3 className="text-lg font-bold text-foreground mb-2">
                 {benefit.title}
               </h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
+              <p className="text-sm text-muted-foreground leading-relaxed" style={literal ? { color: brand.themeColors.muted } : undefined}>
                 {benefit.description}
               </p>
             </Card>

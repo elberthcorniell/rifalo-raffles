@@ -1,3 +1,5 @@
+import type { ThemeColors } from '@/types/org'
+
 /** Convert #RRGGBB to "H S% L%" for CSS hsl(var(--token)). */
 export function hexToHslChannels(hex: string): string | null {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
@@ -47,6 +49,21 @@ function parseHexRgb(hex: string): { r: number; g: number; b: number } | null {
   return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 }
 }
 
+/** Mix two hex colors. amount 0 returns `from`, 1 returns `to`. */
+export function mixHex(from: string, to: string, amount: number): string {
+  const a = parseHexRgb(from)
+  const b = parseHexRgb(to)
+  if (!a || !b) return from
+  const t = Math.max(0, Math.min(1, amount))
+  const channel = (start: number, end: number) => Math.round(start + (end - start) * t)
+  return (
+    '#' +
+    [channel(a.r, b.r), channel(a.g, b.g), channel(a.b, b.b)]
+      .map((c) => c.toString(16).padStart(2, '0'))
+      .join('')
+  )
+}
+
 /** Relative luminance per WCAG 2.1 */
 export function relativeLuminance(hex: string): number | null {
   const rgb = parseHexRgb(hex)
@@ -78,6 +95,17 @@ export function meetsContrast(
   return level === 'aa-large' ? ratio >= 3 : ratio >= 4.5
 }
 
+/** Footer colors fall back to the brand primary and a readable text color. */
+export function resolveFooterColors(
+  primary: string,
+  footerBg: string | null | undefined,
+  footerText: string | null | undefined
+): { bg: string; text: string } {
+  const bg = isHexColor(footerBg || '') ? (footerBg as string).trim() : primary
+  const text = isHexColor(footerText || '') ? (footerText as string).trim() : bestForegroundOn(bg)
+  return { bg, text }
+}
+
 /** Best readable text color (near-white or near-black) on a solid fill. */
 export function bestForegroundOn(bg: string): string {
   const white = contrastRatio('#FFFFFF', bg) ?? 0
@@ -106,9 +134,15 @@ export type ContrastIssue = {
 export function evaluateBrandContrast(
   primary: string,
   secondary: string,
-  theme: 'light' | 'dark'
+  theme: 'light' | 'dark' | 'custom',
+  customSurface?: string
 ): ContrastIssue[] {
-  const surface = THEME_SURFACES[theme]
+  const surface =
+    theme === 'custom'
+      ? customSurface && isHexColor(customSurface)
+        ? customSurface
+        : THEME_SURFACES.light
+      : THEME_SURFACES[theme]
   const issues: ContrastIssue[] = []
 
   const push = (
@@ -137,7 +171,9 @@ export function evaluateBrandContrast(
     'primary-on-surface',
     theme === 'dark'
       ? 'El primario es demasiado oscuro para títulos sobre fondo oscuro'
-      : 'El primario es demasiado claro para títulos sobre fondo claro',
+      : theme === 'custom'
+        ? 'El primario no contrasta con el fondo personalizado'
+        : 'El primario es demasiado claro para títulos sobre fondo claro',
     primary,
     surface,
     3
@@ -148,7 +184,9 @@ export function evaluateBrandContrast(
     'secondary-on-surface',
     theme === 'dark'
       ? 'El acento no contrasta lo suficiente sobre el fondo oscuro'
-      : 'El acento no contrasta lo suficiente sobre el fondo claro',
+      : theme === 'custom'
+        ? 'El acento no contrasta lo suficiente sobre el fondo personalizado'
+        : 'El acento no contrasta lo suficiente sobre el fondo claro',
     secondary,
     surface,
     3,
@@ -198,6 +236,49 @@ export function getBrandCssVars(primaryHex: string, secondaryHex: string): Recor
     vars['--secondary-glow'] = secondary
   }
   if (secondaryFg) vars['--secondary-foreground'] = secondaryFg
+  return vars
+}
+
+export const THEME_SURFACE_KEYS = [
+  '--background',
+  '--background-alt',
+  '--foreground',
+  '--card',
+  '--card-foreground',
+  '--card-border',
+  '--popover',
+  '--popover-foreground',
+  '--muted',
+  '--muted-foreground',
+  '--accent',
+  '--accent-foreground',
+  '--border',
+  '--input',
+] as const
+
+/** HSL channel vars for a user-picked storefront theme. */
+export function getThemeSurfaceCssVars(colors: ThemeColors): Record<string, string> {
+  const set = (key: string, hex: string, vars: Record<string, string>) => {
+    const channels = hexToHslChannels(hex)
+    if (channels) vars[key] = channels
+  }
+  const border = mixHex(colors.background, colors.foreground, 0.16)
+  const mutedFill = mixHex(colors.background, colors.foreground, 0.06)
+  const vars: Record<string, string> = {}
+  set('--background', colors.background, vars)
+  set('--background-alt', colors.backgroundAlt, vars)
+  set('--foreground', colors.foreground, vars)
+  set('--card', colors.card, vars)
+  set('--card-foreground', colors.foreground, vars)
+  set('--card-border', border, vars)
+  set('--popover', colors.card, vars)
+  set('--popover-foreground', colors.foreground, vars)
+  set('--muted', mutedFill, vars)
+  set('--muted-foreground', colors.muted, vars)
+  set('--accent', colors.backgroundAlt, vars)
+  set('--accent-foreground', colors.foreground, vars)
+  set('--border', border, vars)
+  set('--input', border, vars)
   return vars
 }
 
