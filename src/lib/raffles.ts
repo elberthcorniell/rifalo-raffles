@@ -76,22 +76,18 @@ async function applyInChunks<T>(
 const TICKET_PAGE_SIZE = 1000
 
 /** Page through tickets. A single select is capped at max_rows (1000). */
-async function fetchAllTickets(
-  admin: AdminClient,
-  raffleId: string,
-  columns: string
-): Promise<TicketRow[]> {
+async function fetchAllTickets(admin: AdminClient, raffleId: string): Promise<TicketRow[]> {
   const rows: TicketRow[] = []
   for (let from = 0; ; from += TICKET_PAGE_SIZE) {
     const { data, error } = await admin
       .from('tickets')
-      .select(columns)
+      .select('id, number, status')
       .eq('raffle_id', raffleId)
       .order('number', { ascending: true })
       .range(from, from + TICKET_PAGE_SIZE - 1)
 
     if (error) throw new Error(error.message)
-    const page = (data || []) as TicketRow[]
+    const page = (data ?? []) as TicketRow[]
     rows.push(...page)
     if (page.length < TICKET_PAGE_SIZE) break
   }
@@ -99,7 +95,7 @@ async function fetchAllTickets(
 }
 
 async function rebuildTicketRanges(admin: AdminClient, raffleId: string) {
-  const remaining = await fetchAllTickets(admin, raffleId, 'id, number')
+  const remaining = await fetchAllTickets(admin, raffleId)
 
   const { error: deleteRangesError } = await admin
     .from('ticket_ranges')
@@ -200,7 +196,7 @@ export async function syncRaffleTicketTotal(
     throw new Error(`El total no puede superar ${MAX_RAFFLE_TICKETS.toLocaleString('es-DO')} boletos`)
   }
 
-  const rows = await fetchAllTickets(admin, raffleId, 'id, number, status')
+  const rows = await fetchAllTickets(admin, raffleId)
   const taken = rows.filter((ticket) => ticket.status !== 'available').length
   if (desired < taken) {
     throw new Error(

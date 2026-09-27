@@ -65,8 +65,15 @@ export default function RaffleDetailPage() {
     setIsPurchaseDialogOpen(true);
   };
 
-  const progressPercentage = raffle ? (raffle.soldTickets / raffle.totalTickets) * 100 : 0;
   const remainingTickets = raffle ? raffle.totalTickets - raffle.soldTickets : 0;
+  const progressPercentage =
+    raffle && raffle.totalTickets > 0
+      ? Math.min(100, (raffle.soldTickets / raffle.totalTickets) * 100)
+      : 0;
+  const progressLabel =
+    progressPercentage > 0 && progressPercentage < 1
+      ? "<1%"
+      : `${Math.round(progressPercentage)}%`;
 
   return (
     <div className="min-h-screen bg-background font-poppins pb-20 md:pb-0">
@@ -161,16 +168,13 @@ export default function RaffleDetailPage() {
                   </div>
                 </Card>
 
-                {/* Progress Section */}
                 <Card className="p-6 bg-gradient-card border-card-border">
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium text-muted-foreground">
                         Boletos vendidos
                       </span>
-                      <span className="text-sm font-bold text-foreground">
-                        {raffle.soldTickets} / {raffle.totalTickets}
-                      </span>
+                      <span className="text-sm font-bold text-foreground">{progressLabel}</span>
                     </div>
                     <div className="relative">
                       <Progress value={progressPercentage} className="h-4 progress-glow" />
@@ -178,15 +182,10 @@ export default function RaffleDetailPage() {
                       <div className="absolute top-0 left-1/2 w-0.5 h-4 bg-background"></div>
                       <div className="absolute top-0 left-3/4 w-0.5 h-4 bg-background"></div>
                     </div>
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>25%</span>
-                      <span>50%</span>
-                      <span>75%</span>
-                    </div>
-                    <div className="pt-2 border-t border-card-border">
-                      <p className="text-sm text-muted-foreground">
-                        <span className="font-bold text-primary">{remainingTickets}</span> boletos disponibles
-                      </p>
+                    <div className="relative h-4 text-xs text-muted-foreground">
+                      <span className="absolute left-1/4 -translate-x-1/2">25%</span>
+                      <span className="absolute left-1/2 -translate-x-1/2">50%</span>
+                      <span className="absolute left-3/4 -translate-x-1/2">75%</span>
                     </div>
                   </div>
                 </Card>
@@ -210,12 +209,6 @@ export default function RaffleDetailPage() {
                         <span className="text-muted-foreground">Precio por boleto</span>
                         <span className="font-bold text-xl text-foreground">
                           RD${raffle.ticketPrice.toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center p-4 bg-background rounded-lg">
-                        <span className="text-muted-foreground">Boletos disponibles</span>
-                        <span className="font-bold text-xl text-foreground">
-                          {remainingTickets}
                         </span>
                       </div>
                     </div>
