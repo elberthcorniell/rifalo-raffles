@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireOrgAdmin } from '@/lib/supabase/require-admin'
 import { getTicketCounts, mapRaffle } from '@/lib/raffles'
 import type { DbRaffle } from '@/types/raffle'
+import { captureServerEvent } from '@/lib/posthog-server'
 
 export async function GET() {
   const auth = await requireOrgAdmin()
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
   const auth = await requireOrgAdmin()
   if ('error' in auth) return auth.error
 
-  const { admin, org } = auth
+  const { user, admin, org } = auth
   const body = await request.json()
 
   const {
@@ -94,6 +95,15 @@ export async function POST(request: Request) {
   }
 
   const counts = await getTicketCounts([raffle.id])
+  await captureServerEvent(user.id, 'raffle_created', {
+    raffle_id: raffle.id,
+    organization_id: org.id,
+    ticket_price: Number(ticketPrice),
+    min_tickets: parsedMinTickets,
+    initial_ticket_count: counts[raffle.id]?.total ?? 0,
+    is_featured: Boolean(featured),
+  })
+
   return NextResponse.json({
     success: true,
     data: mapRaffle(raffle as DbRaffle, counts[raffle.id]),

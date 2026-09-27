@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, Search, Ticket, Clock, CheckCircle, XCircle, AlertCircle, Phone } from "lucide-react";
+import posthog from "posthog-js";
 
 interface TicketElement {
   description: string;
@@ -135,6 +136,7 @@ function VerifyTicketsContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    posthog.capture("ticket_verification_submitted");
     searchTickets(phone);
   };
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireOrgAdmin } from '@/lib/supabase/require-admin'
 import { getTicketCounts, mapRaffle, syncRaffleTicketTotal } from '@/lib/raffles'
 import type { DbRaffle } from '@/types/raffle'
+import { captureServerEvent } from '@/lib/posthog-server'
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -75,7 +76,7 @@ export async function PATCH(
   if (body.status != null) updates.status = body.status
   if (body.imagePath !== undefined) updates.image_path = body.imagePath || null
 
-  const { admin, org } = auth
+  const { user, admin, org } = auth
 
   const { data: existing } = await admin
     .from('raffles')
@@ -127,6 +128,14 @@ export async function PATCH(
   }
 
   const counts = await getTicketCounts([id])
+  await captureServerEvent(user.id, 'raffle_updated', {
+    raffle_id: id,
+    organization_id: org.id,
+    ticket_total: counts[id]?.total ?? 0,
+    raffle_status: data.status,
+    is_featured: Boolean(data.featured),
+  })
+
   return NextResponse.json({
     success: true,
     data: mapRaffle(data, counts[id]),
@@ -141,12 +150,17 @@ export async function DELETE(
   if ('error' in auth) return auth.error
 
   const { id } = await params
-  const { admin, org } = auth
+  const { user, admin, org } = auth
 
   const { error } = await admin.from('raffles').delete().eq('id', id).eq('org_id', org.id)
   if (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
   }
+
+  await captureServerEvent(user.id, 'raffle_deleted', {
+    raffle_id: id,
+    organization_id: org.id,
+  })
 
   return NextResponse.json({ success: true })
 }

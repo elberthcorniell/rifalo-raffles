@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireOrgAdmin } from '@/lib/supabase/require-admin'
+import { captureServerEvent } from '@/lib/posthog-server'
 
 export async function POST(
   request: Request,
@@ -9,7 +10,7 @@ export async function POST(
   if ('error' in auth) return auth.error
 
   const { id } = await params
-  const { admin, org } = auth
+  const { user, admin, org } = auth
 
   const { data: raffle } = await admin
     .from('raffles')
@@ -42,6 +43,14 @@ export async function POST(
   if (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 400 })
   }
+
+  await captureServerEvent(user.id, 'raffle_ticket_range_added', {
+    raffle_id: id,
+    organization_id: org.id,
+    range_start: start,
+    range_end: end,
+    ticket_count: end - start + 1,
+  })
 
   return NextResponse.json({ success: true, data: { rangeId: data } })
 }

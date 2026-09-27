@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { sendPurchaseSubmittedEmail, sendPurchaseReceivedCustomerEmail } from '@/lib/email'
 import { getOrgFromHeaders, getOrgBrand } from '@/lib/tenant'
 import { normalizeCheckoutFields } from '@/types/org'
+import { captureServerEvent } from '@/lib/posthog-server'
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -319,6 +320,15 @@ export async function POST(request: Request) {
       brand,
     }).catch((error) => {
       console.error('Failed to send purchase notification email:', error)
+    })
+
+    await captureServerEvent(customerId, 'voucher_purchase_submitted', {
+      purchase_id: purchase.id,
+      raffle_id: raffleId,
+      organization_id: org.id,
+      ticket_quantity: parsedTicketQuantity,
+      total_amount: parsedTotalAmount,
+      currency: 'DOP',
     })
 
     if (customerEmail) {

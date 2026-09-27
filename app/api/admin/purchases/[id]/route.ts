@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireOrgAdmin } from '@/lib/supabase/require-admin'
 import { sendPaymentApprovedEmail, sendPaymentApprovedAdminEmail } from '@/lib/email'
 import { getOrgBrand } from '@/lib/tenant'
+import { captureServerEvent } from '@/lib/posthog-server'
 
 export async function GET(
   _request: Request,
@@ -156,6 +157,11 @@ export async function POST(
     }
     sendPaymentApprovedAdminEmail(emailData).catch(console.error)
   }
+
+  await captureServerEvent(user.id, action === 'confirm' ? 'purchase_confirmed' : 'purchase_rejected', {
+    purchase_id: id,
+    organization_id: org.id,
+  })
 
   return NextResponse.json({ success: true, data: { id, action } })
 }

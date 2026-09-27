@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireOrgAdmin } from '@/lib/supabase/require-admin'
 import { getOrgBrand } from '@/lib/tenant'
+import { captureServerEvent } from '@/lib/posthog-server'
 
 export async function GET() {
   const auth = await requireOrgAdmin()
@@ -40,7 +41,7 @@ export async function POST() {
   const auth = await requireOrgAdmin()
   if ('error' in auth) return auth.error
 
-  const { admin, org } = auth
+  const { user, admin, org } = auth
 
   if (org.onboarding_completed_at) {
     return NextResponse.json({
@@ -69,6 +70,11 @@ export async function POST() {
   if (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
   }
+
+  await captureServerEvent(user.id, 'onboarding_completed', {
+    organization_id: org.id,
+    raffle_count: raffleCount,
+  })
 
   return NextResponse.json({ success: true, data: { completed: true } })
 }

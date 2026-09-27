@@ -15,6 +15,7 @@ import { Clock, Ticket, Star, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getImageSrc } from "@/lib/utils";
 import { Raffle } from "@/types/raffle";
+import posthog from "posthog-js";
 
 export default function RaffleDetailPage() {
   const params = useParams();
@@ -62,6 +63,13 @@ export default function RaffleDetailPage() {
   }, [params.id, toast]);
 
   const handleParticipate = () => {
+    if (raffle) {
+      posthog.capture("raffle_purchase_started", {
+        raffle_id: raffle.id,
+        ticket_price: raffle.ticketPrice,
+        available_tickets: raffle.totalTickets - raffle.soldTickets,
+      });
+    }
     setIsPurchaseDialogOpen(true);
   };
 

@@ -7,6 +7,7 @@ import {
   isStripeConfigured,
   priceIdForPlan,
 } from '@/lib/stripe'
+import { captureServerEvent } from '@/lib/posthog-server'
 
 export async function POST(request: Request) {
   const auth = await requireOrgAdmin()
@@ -89,6 +90,12 @@ export async function POST(request: Request) {
         { status: 500 }
       )
     }
+
+    await captureServerEvent(user.id, 'billing_checkout_started', {
+      organization_id: org.id,
+      requested_plan: plan,
+      current_plan: currentPlan,
+    })
 
     return NextResponse.json({ success: true, data: { url: session.url } })
   } catch (error) {
