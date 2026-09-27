@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { PlatformLogo } from '@/components/platform/PlatformLogo'
+import { SHOW_EXPLORE } from '@/lib/constants'
 
 export function PlatformHeader() {
   return (
@@ -15,9 +16,11 @@ export function PlatformHeader() {
           </span>
         </Link>
         <div className="flex items-center gap-0.5 sm:gap-2">
-          <Button variant="ghost" size="sm" className="px-2 text-white hover:bg-white/10 hover:text-white sm:px-3" asChild>
-            <Link href="/explore">Explorar</Link>
-          </Button>
+          {SHOW_EXPLORE && (
+            <Button variant="ghost" size="sm" className="px-2 text-white hover:bg-white/10 hover:text-white sm:px-3" asChild>
+              <Link href="/explore">Explorar</Link>
+            </Button>
+          )}
           <Button variant="ghost" size="sm" className="px-2 text-white hover:bg-white/10 hover:text-white sm:px-3" asChild>
             <Link href="/login">
               <span className="sm:hidden">Entrar</span>

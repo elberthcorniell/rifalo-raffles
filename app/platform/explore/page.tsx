@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { fetchCatalogRaffles } from '@/lib/raffle-catalog'
 import { PlatformHeader } from '@/components/platform/PlatformHeader'
 import { CatalogGrid } from '@/components/platform/CatalogGrid'
 import { Button } from '@/components/ui/button'
+import { SHOW_EXPLORE } from '@/lib/constants'
 
 export const metadata: Metadata = {
   title: 'Explorar rifas',
@@ -11,6 +13,8 @@ export const metadata: Metadata = {
 }
 
 export default async function ExplorePage() {
+  if (!SHOW_EXPLORE) redirect('/')
+
   const raffles = await fetchCatalogRaffles(60)
 
   return (

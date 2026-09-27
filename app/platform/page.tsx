@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { PLATFORM, getRootDomain, PLAN_PRICES } from '@/lib/constants'
+import { PLATFORM, getRootDomain, PLAN_PRICES, SHOW_EXPLORE } from '@/lib/constants'
 import { Button } from '@/components/ui/button'
 import {
   Ticket,
@@ -220,7 +220,7 @@ const plans = [
 ]
 
 export default async function PlatformLandingPage() {
-  const catalog = await fetchCatalogRaffles(6)
+  const catalog = SHOW_EXPLORE ? await fetchCatalogRaffles(6) : []
 
   return (
     <div className="min-h-screen bg-background font-poppins">
@@ -311,6 +311,7 @@ export default async function PlatformLandingPage() {
           </div>
         </section>
 
+        {SHOW_EXPLORE && (
         <section className="border-b">
           <div className="max-w-6xl mx-auto px-4 py-16 md:py-20">
             <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -346,6 +347,7 @@ export default async function PlatformLandingPage() {
             )}
           </div>
         </section>
+        )}
 
         <section className="max-w-6xl mx-auto px-4 py-20">
           <div className="max-w-2xl mb-10 space-y-3">
