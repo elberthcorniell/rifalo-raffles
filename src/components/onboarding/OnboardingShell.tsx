@@ -7,13 +7,15 @@ import { cn } from '@/lib/utils'
 export function OnboardingShell({
   currentStep,
   orgName,
+  steps = ONBOARDING_STEPS,
   children,
 }: {
   currentStep: number
   orgName?: string
+  steps?: readonly { id: number; label: string }[]
   children: React.ReactNode
 }) {
-  const done = currentStep > ONBOARDING_STEPS.length
+  const done = currentStep > steps.length
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col">
@@ -21,13 +23,13 @@ export function OnboardingShell({
         <div className="mx-auto max-w-xl px-4 py-4 flex items-center justify-between gap-3">
           <PlatformLogo height={32} />
           <p className="text-xs text-muted-foreground truncate">
-            {done ? 'Listo' : `Paso ${currentStep} de ${ONBOARDING_STEPS.length}`}
+            {done ? 'Listo' : `Paso ${currentStep} de ${steps.length}`}
             {orgName ? ` · ${orgName}` : ''}
           </p>
         </div>
         <div className="mx-auto max-w-xl px-4 pb-4">
           <ol className="flex items-center gap-1">
-            {ONBOARDING_STEPS.map((step) => {
+            {steps.map((step) => {
               const reached = currentStep > step.id
               const active = currentStep === step.id
               return (

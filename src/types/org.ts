@@ -116,7 +116,7 @@ export interface OrgBrand {
   tagline: string
   email: string
   phone: string
-  logo: string
+  logo: string | null
   adminEmail: string
   copyright: string
   twitter_handle: string

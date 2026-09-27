@@ -6,6 +6,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useOrgBrand } from "@/components/OrgBrandProvider";
+import type { OrgBrand } from "@/types/org";
 
 const Header = () => {
   const router = useRouter();
@@ -48,12 +49,8 @@ const Header = () => {
           </Sheet>
 
           {/* Mobile Logo */}
-          <div className="flex-1 flex justify-center">
-            <img 
-              src={brand.logo}
-              alt={`${brand.name} Logo`}
-              className="h-20 w-auto animate-fade-in"
-            />
+          <div className="flex-1 flex justify-center min-w-0">
+            <BrandMark brand={brand} className="h-20" />
           </div>
 
           {/* Spacer for mobile layout balance */}
@@ -66,12 +63,8 @@ const Header = () => {
           <div className="flex-1" />
 
           {/* Centered Logo */}
-          <div className="flex justify-center items-center flex-1">
-            <img 
-              src={brand.logo}
-              alt={`${brand.name} Logo`}
-              className="h-16 w-auto animate-fade-in"
-            />
+          <div className="flex justify-center items-center flex-1 min-w-0">
+            <BrandMark brand={brand} className="h-16" />
           </div>
 
           {/* Right Buttons */}
@@ -89,5 +82,23 @@ const Header = () => {
     </header>
   );
 };
+
+function BrandMark({ brand, className }: { brand: OrgBrand; className: string }) {
+  if (!brand.logo) {
+    return (
+      <span className="max-w-[16rem] truncate font-heading text-xl font-bold tracking-tight animate-fade-in sm:text-2xl">
+        {brand.name}
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={brand.logo}
+      alt={brand.name}
+      className={`${className} w-auto animate-fade-in`}
+    />
+  );
+}
 
 export default Header;

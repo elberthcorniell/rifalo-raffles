@@ -26,7 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
         title: brand.name,
         description: brand.tagline || '',
         type: "website",
-        images: [brand.logo],
+        ...(brand.logo ? { images: [brand.logo] } : {}),
       },
     };
   }

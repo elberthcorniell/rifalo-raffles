@@ -73,7 +73,6 @@ export function OnboardingWizard() {
 
   const [slug, setSlug] = useState('')
   const [name, setName] = useState('')
-  const [tagline, setTagline] = useState('')
   const [logoPath, setLogoPath] = useState<string | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [primaryColor, setPrimaryColor] = useState(DEFAULT_PRIMARY_COLOR)
@@ -119,7 +118,6 @@ export function OnboardingWizard() {
 
         setSlug(o.slug)
         setName(o.name || '')
-        setTagline(o.tagline || '')
         setLogoPath(o.logo_path)
         setLogoPreview(brand?.logo && !brand.logo.endsWith('/logo.jpg') ? brand.logo : null)
         setPrimaryColor(o.primary_color || DEFAULT_PRIMARY_COLOR)
@@ -168,7 +166,7 @@ export function OnboardingWizard() {
     setSaving(true)
     setError(null)
     try {
-      await saveOrg({ name: name.trim(), tagline })
+      await saveOrg({ name: name.trim() })
       setStep(2)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al guardar')
@@ -368,15 +366,6 @@ export function OnboardingWizard() {
                 placeholder="Mi Rifa RD"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="tagline">Eslogan</Label>
-              <Input
-                id="tagline"
-                value={tagline}
-                onChange={(e) => setTagline(e.target.value)}
-                placeholder="La suerte te acompaña"
-              />
-            </div>
             <div className="rounded-lg border bg-slate-50 px-3 py-2">
               <p className="text-xs text-muted-foreground">Tu sitio</p>
               <p className="font-mono text-sm text-[#111111] break-all">{siteUrl}</p>
@@ -420,20 +409,15 @@ export function OnboardingWizard() {
                 alt="Logo"
                 className="h-14 w-auto rounded bg-white/90 p-1 object-contain"
               />
-            ) : (
-              <div className="h-14 w-14 rounded bg-white/20" />
-            )}
+            ) : null}
             <div className="text-white min-w-0">
-              <p className="font-bold text-lg truncate">{name || 'Tu marca'}</p>
-              <p className="text-sm text-white/80 line-clamp-2">
-                {tagline || 'Tu eslogan aparecerá aquí'}
-              </p>
+              <p className="font-bold text-2xl truncate">{name || 'Tu marca'}</p>
             </div>
           </div>
 
           <form onSubmit={handleBrandSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label>Logo</Label>
+              <Label>Logo (opcional)</Label>
               <Input
                 type="file"
                 accept="image/*"
@@ -443,6 +427,9 @@ export function OnboardingWizard() {
                   if (file) handleLogoUpload(file)
                 }}
               />
+              <p className="text-xs text-muted-foreground">
+                Si no subes uno, el sitio mostrará el nombre de tu organización.
+              </p>
             </div>
 
             <div className="space-y-2">

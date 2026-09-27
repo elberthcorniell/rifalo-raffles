@@ -47,11 +47,15 @@ const Footer = ({
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <img 
-                src={brand.logo}
-                alt={`${brand.name} Logo`}
-                className="h-16 w-auto"
-              />
+              {brand.logo ? (
+                <img
+                  src={brand.logo}
+                  alt={brand.name}
+                  className="h-16 w-auto"
+                />
+              ) : (
+                <p className="font-heading text-2xl font-bold tracking-tight">{brand.name}</p>
+              )}
             </div>
             <p className="opacity-80 text-sm">
               {brand.tagline || brand.name}

@@ -31,7 +31,7 @@ const fallbackBrand: OrgBrand = {
   tagline: PLATFORM.tagline,
   email: PLATFORM.email,
   phone: '',
-  logo: '/logo.jpg',
+  logo: null,
   adminEmail: PLATFORM.email,
   copyright: PLATFORM.copyright,
   twitter_handle: '',

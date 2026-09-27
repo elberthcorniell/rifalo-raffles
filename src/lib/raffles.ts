@@ -33,10 +33,11 @@ export async function getTicketCounts(raffleIds: string[]): Promise<
   if (!hasSupabaseConfig()) return result
 
   const supabase = createAdminClient()
-  const { data, error } = await supabase
-    .from('tickets')
-    .select('raffle_id, status')
-    .in('raffle_id', raffleIds)
+  // Count in SQL. Selecting ticket rows is capped at max_rows (1000), so a
+  // 10,000-ticket raffle would otherwise display as 1,000.
+  const { data, error } = await supabase.rpc('superadmin_raffle_ticket_counts', {
+    p_raffle_ids: raffleIds,
+  })
 
   if (error) {
     console.error('Error fetching ticket counts:', error)
@@ -46,12 +47,11 @@ export async function getTicketCounts(raffleIds: string[]): Promise<
   for (const row of data || []) {
     const bucket = result[row.raffle_id]
     if (!bucket) continue
-    bucket.total += 1
-    if (row.status === 'available') {
-      bucket.available += 1
-    } else {
-      bucket.taken += 1
-    }
+    const total = Number(row.total) || 0
+    const taken = Number(row.taken) || 0
+    bucket.total = total
+    bucket.taken = taken
+    bucket.available = Math.max(0, total - taken)
   }
 
   return result
@@ -73,14 +73,33 @@ async function applyInChunks<T>(
   }
 }
 
-async function rebuildTicketRanges(admin: AdminClient, raffleId: string) {
-  const { data: remaining, error } = await admin
-    .from('tickets')
-    .select('id, number')
-    .eq('raffle_id', raffleId)
-    .order('number', { ascending: true })
+const TICKET_PAGE_SIZE = 1000
 
-  if (error) throw new Error(error.message)
+/** Page through tickets. A single select is capped at max_rows (1000). */
+async function fetchAllTickets(
+  admin: AdminClient,
+  raffleId: string,
+  columns: string
+): Promise<TicketRow[]> {
+  const rows: TicketRow[] = []
+  for (let from = 0; ; from += TICKET_PAGE_SIZE) {
+    const { data, error } = await admin
+      .from('tickets')
+      .select(columns)
+      .eq('raffle_id', raffleId)
+      .order('number', { ascending: true })
+      .range(from, from + TICKET_PAGE_SIZE - 1)
+
+    if (error) throw new Error(error.message)
+    const page = (data || []) as TicketRow[]
+    rows.push(...page)
+    if (page.length < TICKET_PAGE_SIZE) break
+  }
+  return rows
+}
+
+async function rebuildTicketRanges(admin: AdminClient, raffleId: string) {
+  const remaining = await fetchAllTickets(admin, raffleId, 'id, number')
 
   const { error: deleteRangesError } = await admin
     .from('ticket_ranges')
@@ -89,7 +108,7 @@ async function rebuildTicketRanges(admin: AdminClient, raffleId: string) {
 
   if (deleteRangesError) throw new Error(deleteRangesError.message)
 
-  const tickets = remaining || []
+  const tickets = remaining
   if (tickets.length === 0) return
 
   const groups: { start: number; end: number; ids: string[] }[] = []
@@ -181,15 +200,7 @@ export async function syncRaffleTicketTotal(
     throw new Error(`El total no puede superar ${MAX_RAFFLE_TICKETS.toLocaleString('es-DO')} boletos`)
   }
 
-  const { data: tickets, error } = await admin
-    .from('tickets')
-    .select('id, number, status')
-    .eq('raffle_id', raffleId)
-    .order('number', { ascending: true })
-
-  if (error) throw new Error(error.message)
-
-  const rows = (tickets || []) as TicketRow[]
+  const rows = await fetchAllTickets(admin, raffleId, 'id, number, status')
   const taken = rows.filter((ticket) => ticket.status !== 'available').length
   if (desired < taken) {
     throw new Error(

@@ -81,13 +81,13 @@ export function parseHost(hostname: string, rootDomain?: string | string[]): Res
   return { kind: 'unknown', slug: null, host }
 }
 
-function orgLogoUrl(path: string | null): string {
-  if (!path) return '/logo.jpg'
+function orgLogoUrl(path: string | null): string | null {
+  if (!path) return null
   if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('/')) {
     return path
   }
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL
-  if (!base) return '/logo.jpg'
+  if (!base) return null
   return `${base}/storage/v1/object/public/raffle-images/${path}`
 }
 
