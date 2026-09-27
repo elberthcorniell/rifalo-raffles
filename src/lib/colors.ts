@@ -254,6 +254,7 @@ export const THEME_SURFACE_KEYS = [
   '--accent-foreground',
   '--border',
   '--input',
+  '--gradient-card',
 ] as const
 
 /** HSL channel vars for a user-picked storefront theme. */
@@ -279,6 +280,15 @@ export function getThemeSurfaceCssVars(colors: ThemeColors): Record<string, stri
   set('--accent-foreground', colors.foreground, vars)
   set('--border', border, vars)
   set('--input', border, vars)
+  const cardChannels = hexToHslChannels(colors.card)
+  const parts = cardChannels?.match(/^(\d+)\s+(\d+)%\s+(\d+)%$/)
+  if (cardChannels && parts) {
+    const saturation = Number(parts[2])
+    const lightness = Number(parts[3])
+    const shift = saturation < 8 && lightness > 92 ? 3 : 8
+    const endLightness = Math.max(0, lightness - shift)
+    vars['--gradient-card'] = `linear-gradient(145deg, hsl(${cardChannels}), hsl(${parts[1]} ${parts[2]}% ${endLightness}%))`
+  }
   return vars
 }
 
