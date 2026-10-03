@@ -12,6 +12,7 @@ import {
   AlertTriangle,
 } from 'lucide-react'
 import type { OrgPlan } from '@/lib/constants'
+import { ShareableRafflePoster } from '@/components/admin/ShareableRafflePoster'
 
 interface Stats {
   pendingPurchases: number
@@ -97,9 +98,19 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-[#0B2447]">Dashboard</h1>
-        <p className="text-muted-foreground">Resumen de tu plataforma de rifas</p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-[#0B2447]">Dashboard</h1>
+          <p className="text-muted-foreground">Resumen de tu plataforma de rifas</p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <Button asChild>
+            <Link href="/admin/raffles">Nueva rifa</Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/admin/purchases?status=pending">Revisar compras</Link>
+          </Button>
+        </div>
       </div>
 
       {(atLimit || low) && (
@@ -204,14 +215,7 @@ export default function AdminDashboardPage() {
         </Card>
       )}
 
-      <div className="flex flex-wrap gap-3">
-        <Button asChild>
-          <Link href="/admin/raffles">Nueva rifa</Link>
-        </Button>
-        <Button variant="outline" asChild>
-          <Link href="/admin/purchases?status=pending">Revisar compras</Link>
-        </Button>
-      </div>
+      <ShareableRafflePoster />
     </div>
   )
 }

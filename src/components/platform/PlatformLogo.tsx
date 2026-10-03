@@ -8,13 +8,30 @@ const CONTENT = {
   width: (1118 - 182) / 1254,
 }
 
+/** public/rifalo_logo_clear_dark.png — black letters, transparent background. */
+const DARK_ASPECT = 936 / 310
+
 export function PlatformLogo({
   className,
   height = 36,
+  variant = 'light',
 }: {
   className?: string
   height?: number
+  /** light = white letters for dark backgrounds. dark = black letters for light backgrounds. */
+  variant?: 'light' | 'dark'
 }) {
+  if (variant === 'dark') {
+    return (
+      <img
+        src="/rifalo_logo_clear_dark.png"
+        alt="Rifalo"
+        className={cn('inline-block', className)}
+        style={{ height, width: height * DARK_ASPECT }}
+      />
+    )
+  }
+
   const imgSize = height / CONTENT.height
 
   return (

@@ -71,7 +71,7 @@ function PlatformLoginForm() {
       <Card className="w-full max-w-md p-8 space-y-6">
         <div className="text-center space-y-2">
           <div className="flex justify-center">
-            <PlatformLogo height={40} />
+            <PlatformLogo height={40} variant="dark" />
           </div>
           <p className="text-muted-foreground text-sm">Accede a tu panel</p>
         </div>
