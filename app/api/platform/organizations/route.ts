@@ -7,6 +7,7 @@ import {
   RESERVED_SLUGS,
   slugifyOrgName,
 } from '@/lib/constants'
+import { DEFAULT_ORG_SITE_SECTIONS } from '@/types/org'
 
 export async function POST(request: Request) {
   try {
@@ -82,6 +83,7 @@ export async function POST(request: Request) {
         email: adminEmail,
         admin_email: adminEmail,
         created_by: user.id,
+        ...DEFAULT_ORG_SITE_SECTIONS,
       })
       .select('*')
       .single()

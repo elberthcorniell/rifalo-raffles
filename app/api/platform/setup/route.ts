@@ -11,6 +11,7 @@ import {
 import { orgAdminPath } from '@/lib/onboarding'
 import { isHexColor, normalizeHexColor } from '@/lib/colors'
 import {
+  DEFAULT_ORG_SITE_SECTIONS,
   DEFAULT_PRIMARY_COLOR,
   DEFAULT_SECONDARY_COLOR,
   normalizeOrgTheme,
@@ -191,6 +192,7 @@ export async function POST(request: Request) {
           primary_color: primaryColor,
           secondary_color: secondaryColor,
           theme,
+          ...DEFAULT_ORG_SITE_SECTIONS,
         })
         .select('*')
         .single()

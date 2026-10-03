@@ -10,9 +10,9 @@ Plataforma de gestión de rifas (Next.js 15) con **organizaciones** en subdomini
 
 ## Arquitectura multi-tenant
 
-| Host | Qué muestra |
-|------|-------------|
-| `ROOT_DOMAIN` (apex) | Landing del producto + signup / login |
+| Host                 | Qué muestra                                   |
+| -------------------- | --------------------------------------------- |
+| `ROOT_DOMAIN` (apex) | Landing del producto + signup / login         |
 | `{slug}.ROOT_DOMAIN` | Tienda pública + `/admin` de esa organización |
 
 La org **cura** se crea en la migración (datos existentes de Cura tu Suerte se migran ahí).
@@ -98,11 +98,11 @@ En el apex, `/signup` crea usuario Auth + `organizations` + `org_members` (owner
 
 Planes mensuales por organización (conteo de boletos en compras `pending`/`confirmed` del mes, zona `America/Santo_Domingo`):
 
-| Plan | Precio | Límite |
-|------|--------|--------|
-| Gratis | $0 | 250 boletos/mes |
-| Plus | $20 | 50,000 boletos/mes |
-| Ilimitado | $50 | Sin límite + dominio propio + varios admins + analítica avanzada |
+| Plan      | Precio | Límite                                                           |
+| --------- | ------ | ---------------------------------------------------------------- |
+| Gratis    | $0     | 250 boletos/mes                                                  |
+| Plus      | $20    | 50,000 boletos/mes                                               |
+| Ilimitado | $50    | Sin límite + dominio propio + varios admins + analítica avanzada |
 
 Configura en `.env.local` (crea los Prices mensuales en el Dashboard de Stripe):
 

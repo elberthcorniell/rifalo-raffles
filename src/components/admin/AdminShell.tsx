@@ -82,7 +82,17 @@ export function AdminShell({
       >
         <div className="p-6 border-b border-white/10">
           <p className="text-xs uppercase tracking-wider text-white/60">Admin</p>
-          <h1 className="font-bold text-lg">{brand.name}</h1>
+          <h1>
+            {brand.logo ? (
+              <img
+                src={brand.logo}
+                alt={brand.name}
+                className="h-10 w-auto max-w-full object-contain object-left"
+              />
+            ) : (
+              <span className="font-bold text-lg">{brand.name}</span>
+            )}
+          </h1>
         </div>
         <nav className="flex-1 p-4 space-y-1 flex flex-col">
           <div className="space-y-1">
@@ -134,7 +144,15 @@ export function AdminShell({
           <Button variant="ghost" size="icon" onClick={() => setOpen(true)}>
             <Menu className="h-5 w-5" />
           </Button>
-          <span className="font-semibold text-[#0B2447]">{brand.name}</span>
+          {brand.logo ? (
+            <img
+              src={brand.logo}
+              alt={brand.name}
+              className="h-8 w-auto max-w-[10rem] object-contain"
+            />
+          ) : (
+            <span className="font-semibold text-[#0B2447]">{brand.name}</span>
+          )}
         </header>
         <main className="flex-1 p-4 md:p-8">{children}</main>
       </div>

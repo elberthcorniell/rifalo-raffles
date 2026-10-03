@@ -145,6 +145,15 @@ export const DEFAULT_PRIMARY_COLOR = '#0B2447'
 export const DEFAULT_SECONDARY_COLOR = '#1976D2'
 export const DEFAULT_ORG_THEME: OrgTheme = 'light'
 
+/** Homepage sections start hidden so a new organization can turn them on later. */
+export const DEFAULT_ORG_SITE_SECTIONS = {
+  show_hero_copy: false,
+  show_how_it_works: false,
+  show_raffles: false,
+  show_trust_benefits: false,
+  show_testimonials: false,
+} as const
+
 export function normalizeOrgTheme(value: unknown): OrgTheme {
   if (value === 'dark' || value === 'custom') return value
   return 'light'
