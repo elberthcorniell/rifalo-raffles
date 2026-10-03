@@ -94,7 +94,7 @@ function drawPoster(
   const photoX = pad
   const photoY = 72
   const photoW = contentW
-  const photoH = 860
+  const photoH = 700
 
   ctx.save()
   roundRect(ctx, photoX, photoY, photoW, photoH, 40)
@@ -107,36 +107,57 @@ function drawPoster(
   }
   ctx.restore()
 
-  let y = photoY + photoH + 48
+  let y = photoY + photoH + 36
   ctx.textAlign = 'left'
   ctx.textBaseline = 'top'
   ctx.fillStyle = NAVY
-  ctx.font = `800 58px ${FONT}`
+  ctx.font = `800 68px ${FONT}`
   for (const line of wrapText(ctx, input.title, contentW, 2)) {
     ctx.fillText(line, pad, y)
-    y += 70
+    y += 80
   }
 
-  y += 16
+  y += 12
   const price = formatPosterPrice(input.ticketPrice)
-  ctx.font = `800 42px ${FONT}`
+  ctx.font = `800 52px ${FONT}`
   ctx.fillStyle = '#1565C0'
   ctx.fillText(price, pad, y)
   const priceWidth = ctx.measureText(price).width
-  ctx.font = `600 28px ${FONT}`
+  ctx.font = `600 34px ${FONT}`
   ctx.fillStyle = '#64748B'
-  ctx.fillText('por boleto', pad + priceWidth + 16, y + 12)
+  ctx.fillText('por boleto', pad + priceWidth + 18, y + 16)
 
   if (input.totalTickets > 0) {
     const available = Math.max(0, input.totalTickets - input.soldTickets)
-    ctx.font = `600 28px ${FONT}`
+    const pct = Math.min(100, Math.round((input.soldTickets / input.totalTickets) * 100))
+    y += 72
+    ctx.font = `600 34px ${FONT}`
     ctx.fillStyle = '#334155'
-    ctx.fillText(`Quedan ${available.toLocaleString('es-DO')} boletos`, pad, y + 64)
+    ctx.fillText(`Quedan ${available.toLocaleString('es-DO')} boletos`, pad, y)
+
+    y += 52
+    ctx.font = `600 30px ${FONT}`
+    ctx.fillStyle = '#64748B'
+    ctx.fillText('Vendidos', pad, y)
+    ctx.textAlign = 'right'
+    ctx.fillText(`${pct}%`, pad + contentW, y)
+    ctx.textAlign = 'left'
+
+    const trackY = y + 44
+    const trackH = 36
+    roundRect(ctx, pad, trackY, contentW, trackH, trackH / 2)
+    ctx.fillStyle = '#E2E8F0'
+    ctx.fill()
+    if (pct > 0) {
+      roundRect(ctx, pad, trackY, Math.max((contentW * pct) / 100, trackH), trackH, trackH / 2)
+      ctx.fillStyle = '#1565C0'
+      ctx.fill()
+    }
   }
 
   ctx.fillStyle = '#94A3B8'
-  ctx.font = `600 24px ${FONT}`
-  ctx.fillText(fitText(ctx, input.siteLabel, contentW), pad, POSTER_HEIGHT - 72)
+  ctx.font = `600 30px ${FONT}`
+  ctx.fillText(fitText(ctx, input.siteLabel, contentW), pad, POSTER_HEIGHT - 64)
 }
 
 function loadImage(src: string): Promise<HTMLImageElement | null> {
