@@ -14,6 +14,7 @@ import {
   MessageSquareQuote,
   CreditCard,
   Users,
+  KeyRound,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -38,14 +39,17 @@ const nav = [
   { href: '/admin/team', label: 'Equipo', icon: Users },
   { href: '/admin/settings', label: 'Sitio web', icon: Globe },
   { href: '/admin/domain', label: 'Dominio', icon: Link2 },
+  { href: '/admin/account', label: 'Cuenta', icon: KeyRound },
 ]
 
 export function AdminShell({
   children,
   initialQuota = null,
+  email = null,
 }: {
   children: React.ReactNode
   initialQuota?: TicketQuota | null
+  email?: string | null
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -120,7 +124,17 @@ export function AdminShell({
             <SidebarQuota quota={quota} onNavigate={() => setOpen(false)} />
           )}
         </nav>
-        <div className="p-4 border-t border-white/10">
+        <div className="p-4 border-t border-white/10 space-y-1">
+          {email && (
+            <Link
+              href="/admin/account"
+              onClick={() => setOpen(false)}
+              className="block px-3 py-1 text-xs text-white/50 truncate hover:text-white"
+              title={email}
+            >
+              {email}
+            </Link>
+          )}
           <Button
             variant="ghost"
             className="w-full justify-start text-white/70 hover:text-white hover:bg-white/10"

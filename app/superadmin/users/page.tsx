@@ -19,7 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { X } from 'lucide-react'
+import { Loader2, LogIn, X } from 'lucide-react'
+import { requestOrgMemberSession } from '@/lib/open-org-as-member'
 import {
   Table,
   TableBody,
@@ -54,6 +55,62 @@ interface SuperadminUser {
   orgs: UserOrg[]
 }
 
+function MembershipList({
+  user,
+  openingKey,
+  onEnter,
+  onRemove,
+}: {
+  user: SuperadminUser
+  openingKey: string | null
+  onEnter: (userId: string, orgId: string) => void
+  onRemove: (user: SuperadminUser, org: UserOrg) => void
+}) {
+  if (user.orgs.length === 0) {
+    return <span className="text-sm text-muted-foreground">Sin organización</span>
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {user.orgs.map((org) => {
+        const key = `${user.id}:${org.orgId}`
+        const opening = openingKey === key
+        return (
+          <span key={org.orgId} className="inline-flex items-center gap-1">
+            <Badge variant="secondary" className="gap-1 pr-1">
+              {org.name} · {org.role}
+              <button
+                type="button"
+                className="rounded-sm p-0.5 hover:bg-black/10"
+                aria-label={`Quitar de ${org.name}`}
+                onClick={() => onRemove(user, org)}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 px-2"
+              disabled={opening}
+              aria-label={`Entrar a ${org.name} como ${user.email || 'este usuario'}`}
+              onClick={() => onEnter(user.id, org.orgId)}
+            >
+              {opening ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <LogIn className="h-3.5 w-3.5" />
+              )}
+              Entrar
+            </Button>
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
 function formatDate(value: string | null) {
   if (!value) return '—'
   return new Date(value).toLocaleString('es-DO', {
@@ -71,6 +128,7 @@ export default function SuperadminUsersPage() {
   const [orgId, setOrgId] = useState('')
   const [role, setRole] = useState<'admin' | 'owner'>('admin')
   const [saving, setSaving] = useState(false)
+  const [openingKey, setOpeningKey] = useState<string | null>(null)
   const [error, setError] = useState('')
 
   async function loadUsers() {
@@ -124,6 +182,23 @@ export default function SuperadminUsersPage() {
     }
     setAssignUser(null)
     await loadUsers()
+  }
+
+  async function enterAs(userId: string, orgId: string) {
+    setError('')
+    setOpeningKey(`${userId}:${orgId}`)
+    try {
+      const result = await requestOrgMemberSession(orgId, userId)
+      if ('error' in result) {
+        setError(result.error)
+        return
+      }
+      window.open(result.url, '_blank', 'noopener,noreferrer')
+    } catch {
+      setError('No se pudo abrir el admin')
+    } finally {
+      setOpeningKey(null)
+    }
   }
 
   async function removeMembership(user: SuperadminUser, org: UserOrg) {
@@ -195,24 +270,12 @@ export default function SuperadminUsersPage() {
                 </Badge>
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-1">
-              {u.orgs.length === 0 && (
-                <span className="text-sm text-muted-foreground">Sin organización</span>
-              )}
-              {u.orgs.map((org) => (
-                <Badge key={org.orgId} variant="secondary" className="gap-1 pr-1">
-                  {org.name} · {org.role}
-                  <button
-                    type="button"
-                    className="rounded-sm p-0.5 hover:bg-black/10"
-                    aria-label={`Quitar de ${org.name}`}
-                    onClick={() => removeMembership(u, org)}
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
-            </div>
+            <MembershipList
+              user={u}
+              openingKey={openingKey}
+              onEnter={enterAs}
+              onRemove={removeMembership}
+            />
             <p className="text-xs text-muted-foreground">
               Creado {formatDate(u.createdAt)} · Último acceso {formatDate(u.lastSignInAt)}
             </p>
@@ -263,22 +326,12 @@ export default function SuperadminUsersPage() {
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-wrap items-center gap-1">
-                    {u.orgs.length === 0 && (
-                      <span className="text-muted-foreground">Sin organización</span>
-                    )}
-                    {u.orgs.map((org) => (
-                      <Badge key={org.orgId} variant="secondary" className="gap-1 pr-1">
-                        {org.name} · {org.role}
-                        <button
-                          type="button"
-                          className="rounded-sm p-0.5 hover:bg-black/10"
-                          aria-label={`Quitar de ${org.name}`}
-                          onClick={() => removeMembership(u, org)}
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    ))}
+                    <MembershipList
+                      user={u}
+                      openingKey={openingKey}
+                      onEnter={enterAs}
+                      onRemove={removeMembership}
+                    />
                     <Button
                       type="button"
                       variant="outline"

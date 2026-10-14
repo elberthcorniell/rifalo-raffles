@@ -5,6 +5,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { requestOrgMemberSession } from '@/lib/open-org-as-member'
+import {
   TableBody,
   TableCell,
   TableHead,
@@ -28,6 +36,13 @@ const PLAN_CLASS: Record<OrgPlan, string> = {
 }
 
 const PAGE_SIZE = 25
+
+interface OrgMemberOption {
+  userId: string
+  role: string
+  email: string | null
+  displayName: string | null
+}
 
 interface SuperadminOrg {
   id: string
@@ -90,6 +105,10 @@ export default function SuperadminOrgsPage() {
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [openingId, setOpeningId] = useState<string | null>(null)
+  const [openingUserId, setOpeningUserId] = useState<string | null>(null)
+  const [picker, setPicker] = useState<{ org: SuperadminOrg; members: OrgMemberOption[] } | null>(
+    null
+  )
   const [savingId, setSavingId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
@@ -162,24 +181,55 @@ export default function SuperadminOrgsPage() {
     }
   }
 
-  const openAdmin = async (orgId: string) => {
+  const enterAs = async (orgId: string, userId: string) => {
     setActionError(null)
-    setOpeningId(orgId)
+    setOpeningUserId(userId)
     try {
-      const res = await fetch('/api/platform/superadmin/impersonate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orgId }),
-      })
-      const json = await res.json()
-      if (!json.success || !json.data?.url) {
-        setActionError(json.error || 'No se pudo abrir el admin')
+      const result = await requestOrgMemberSession(orgId, userId)
+      if ('error' in result) {
+        setActionError(result.error)
         return
       }
-      window.open(json.data.url, '_blank', 'noopener,noreferrer')
+      window.open(result.url, '_blank', 'noopener,noreferrer')
+      setPicker(null)
     } catch {
       setActionError('No se pudo abrir el admin')
     } finally {
+      setOpeningUserId(null)
+      setOpeningId(null)
+    }
+  }
+
+  const openAdmin = async (org: SuperadminOrg) => {
+    setActionError(null)
+    setOpeningId(org.id)
+    try {
+      const res = await fetch(`/api/platform/superadmin/orgs/${org.id}/members`)
+      const json = await res.json()
+      if (!json.success) {
+        setActionError(json.error || 'No se pudieron cargar los usuarios')
+        setOpeningId(null)
+        return
+      }
+      const members = (json.data || []) as OrgMemberOption[]
+      if (members.length === 0) {
+        setActionError('Esta organización no tiene miembros')
+        setOpeningId(null)
+        return
+      }
+      if (members.length === 1) {
+        if (!members[0].email) {
+          setActionError('El miembro no tiene un correo válido')
+          setOpeningId(null)
+          return
+        }
+        await enterAs(org.id, members[0].userId)
+        return
+      }
+      setPicker({ org, members })
+      setOpeningId(null)
+    } catch {
+      setActionError('No se pudieron cargar los usuarios')
       setOpeningId(null)
     }
   }
@@ -252,7 +302,7 @@ export default function SuperadminOrgsPage() {
                 variant="outline"
                 size="sm"
                 className="w-full"
-                onClick={() => openAdmin(org.id)}
+                onClick={() => openAdmin(org)}
                 disabled={openingId === org.id}
               >
                 {openingId === org.id ? (
@@ -361,7 +411,7 @@ export default function SuperadminOrgsPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => openAdmin(org.id)}
+                      onClick={() => openAdmin(org)}
                       disabled={openingId === org.id}
                     >
                       {openingId === org.id ? (
@@ -407,6 +457,48 @@ export default function SuperadminOrgsPage() {
           </div>
         </div>
       )}
+
+      <Dialog open={Boolean(picker)} onOpenChange={(open) => !open && setPicker(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Entrar como</DialogTitle>
+            <DialogDescription>
+              Elige con qué usuario abrir el admin de {picker?.org.name}.
+            </DialogDescription>
+          </DialogHeader>
+          <ul className="max-h-80 divide-y overflow-auto rounded-md border">
+            {picker?.members.map((member) => (
+              <li
+                key={member.userId}
+                className="flex items-center justify-between gap-3 px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{member.email || 'Sin correo'}</p>
+                  <p className="text-xs capitalize text-muted-foreground">
+                    {member.role}
+                    {member.displayName ? ` · ${member.displayName}` : ''}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!member.email || openingUserId === member.userId}
+                  onClick={() => picker && enterAs(picker.org.id, member.userId)}
+                >
+                  {openingUserId === member.userId ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <LogIn className="h-4 w-4 mr-1" />
+                      Entrar
+                    </>
+                  )}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
