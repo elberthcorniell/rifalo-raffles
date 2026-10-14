@@ -11,11 +11,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   let quota: TicketQuota | null = null
+  let email: string | null = null
   const auth = await requireOrgAdmin()
   if (!('error' in auth)) {
+    email = auth.user.email ?? null
     const { data } = await auth.admin.rpc('org_ticket_quota', { p_org_id: auth.org.id })
     quota = parseQuotaRow(data)
   }
 
-  return <AdminShell initialQuota={quota}>{children}</AdminShell>
+  return (
+    <AdminShell initialQuota={quota} email={email}>
+      {children}
+    </AdminShell>
+  )
 }
