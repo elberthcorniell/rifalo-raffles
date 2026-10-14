@@ -9,6 +9,7 @@ import { Loader2 } from 'lucide-react'
 
 export default function AdminAccountPage() {
   const [email, setEmail] = useState<string | null>(null)
+  const [hasPassword, setHasPassword] = useState<boolean | null>(null)
   const [loadingAccount, setLoadingAccount] = useState(true)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -23,11 +24,19 @@ export default function AdminAccountPage() {
       .then((res) => res.json())
       .then((json) => {
         if (cancelled) return
-        if (json.success) setEmail(json.data?.email || null)
-        else setError(json.error || 'No se pudo cargar tu cuenta')
+        if (json.success) {
+          setEmail(json.data?.email || null)
+          setHasPassword(json.data?.hasPassword !== false)
+        } else {
+          setHasPassword(true)
+          setError(json.error || 'No se pudo cargar tu cuenta')
+        }
       })
       .catch(() => {
-        if (!cancelled) setError('No se pudo cargar tu cuenta')
+        if (!cancelled) {
+          setHasPassword(true)
+          setError('No se pudo cargar tu cuenta')
+        }
       })
       .finally(() => {
         if (!cancelled) setLoadingAccount(false)
@@ -56,7 +65,10 @@ export default function AdminAccountPage() {
       const res = await fetch('/api/admin/password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPassword, newPassword }),
+        body: JSON.stringify({
+          currentPassword: hasPassword === true ? currentPassword : '',
+          newPassword,
+        }),
       })
       const json = await res.json()
       if (!json.success) {
@@ -66,7 +78,8 @@ export default function AdminAccountPage() {
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
-      setSuccess('Tu contraseña ya está actualizada.')
+      setHasPassword(true)
+      setSuccess(hasPassword === false ? 'Tu contraseña ya está creada.' : 'Tu contraseña ya está actualizada.')
     } catch {
       setError('No se pudo actualizar la contraseña')
     } finally {
@@ -79,8 +92,11 @@ export default function AdminAccountPage() {
       <div>
         <h1 className="text-2xl font-bold text-[#0B2447]">Cuenta</h1>
         <p className="text-muted-foreground">
-          Cambia la contraseña de tu usuario. Si administras varias organizaciones, usarás
-          la misma para entrar a cada una.
+          {loadingAccount
+            ? 'Cargando tu cuenta…'
+            : hasPassword
+              ? 'Cambia la contraseña de tu usuario. Si administras varias organizaciones, usarás la misma para entrar a cada una.'
+              : 'Esta cuenta todavía no tiene contraseña. Crea una para entrar con tu correo. Si administras varias organizaciones, usarás la misma para cada una.'}
         </p>
       </div>
 
@@ -97,19 +113,21 @@ export default function AdminAccountPage() {
               disabled
             />
           </div>
+          {hasPassword === true && (
+            <div className="space-y-2">
+              <Label htmlFor="current-password">Contraseña actual</Label>
+              <Input
+                id="current-password"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+              />
+            </div>
+          )}
           <div className="space-y-2">
-            <Label htmlFor="current-password">Contraseña actual</Label>
-            <Input
-              id="current-password"
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              autoComplete="current-password"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="new-password">Nueva contraseña</Label>
+            <Label htmlFor="new-password">{hasPassword === false ? 'Contraseña' : 'Nueva contraseña'}</Label>
             <Input
               id="new-password"
               type="password"
@@ -145,7 +163,7 @@ export default function AdminAccountPage() {
             className="bg-[#1976D2] hover:bg-[#1565C0]"
             disabled={saving || loadingAccount}
           >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Guardar contraseña'}
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : hasPassword === false ? 'Crear contraseña' : 'Guardar contraseña'}
           </Button>
         </form>
       </Card>
