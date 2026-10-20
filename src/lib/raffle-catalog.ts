@@ -31,6 +31,57 @@ type OrgRow = {
   slug: string
 }
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+export type CatalogRaffleDetail = {
+  id: string
+  title: string
+  description: string
+  image: string
+  ticketPrice: number
+  orgName: string
+}
+
+/** One verified raffle, for the explore page and its share tags. */
+export async function fetchCatalogRaffle(id: string): Promise<CatalogRaffleDetail | null> {
+  if (!UUID_RE.test(id) || !hasSupabaseConfig()) return null
+
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from('raffles')
+    .select('id, title, description, image_path, ticket_price, org_id')
+    .eq('id', id)
+    .eq('status', 'active')
+    .eq('verification_status', 'verified')
+    .maybeSingle()
+
+  if (error || !data) {
+    if (error) console.error('Error fetching catalog raffle:', error.message)
+    return null
+  }
+
+  const { data: org, error: orgError } = await supabase
+    .from('organizations')
+    .select('name, slug')
+    .eq('id', data.org_id)
+    .maybeSingle()
+
+  if (orgError || !org?.slug) {
+    if (orgError) console.error('Error fetching catalog raffle organization:', orgError.message)
+    return null
+  }
+
+  return {
+    id: data.id,
+    title: data.title || 'Rifa',
+    description: data.description || '',
+    image: getPublicImageUrl(data.image_path),
+    ticketPrice: Number(data.ticket_price) || 0,
+    orgName: org.name,
+  }
+}
+
 /** Active raffles approved for the platform verified catalog. */
 export async function fetchCatalogRaffles(limit = 48): Promise<CatalogRaffle[]> {
   if (!hasSupabaseConfig()) return []
