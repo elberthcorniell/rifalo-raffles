@@ -30,9 +30,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import type { Raffle } from '@/types/raffle'
+import type { Raffle, TicketBundle } from '@/types/raffle'
 import { Loader2, Plus } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import RaffleBundleFields from '@/components/admin/RaffleBundleFields'
+import { parseBundleDrafts, type BundleDraft } from '@/lib/ticket-bundles'
 
 const statusLabel: Record<string, string> = {
   draft: 'Borrador',
@@ -57,6 +59,7 @@ const emptyCreate = {
   status: 'draft',
   rangeStart: '1',
   rangeEnd: '100',
+  bundles: [] as BundleDraft[],
 }
 
 function formatRd(amount: number) {
@@ -131,6 +134,7 @@ export default function AdminRafflesPage() {
   const [newStart, setNewStart] = useState('')
   const [newEnd, setNewEnd] = useState('')
   const [addingRange, setAddingRange] = useState(false)
+  const [editBundles, setEditBundles] = useState<BundleDraft[]>([])
 
   const load = useCallback(async () => {
     const res = await fetch('/api/admin/raffles')
@@ -151,6 +155,15 @@ export default function AdminRafflesPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
+    const parsedBundles = parseBundleDrafts(createForm.bundles)
+    if ('error' in parsedBundles) {
+      toast({
+        title: 'Paquete inválido',
+        description: parsedBundles.error,
+        variant: 'destructive',
+      })
+      return
+    }
     setCreating(true)
     try {
       let imagePath: string | undefined
@@ -178,6 +191,7 @@ export default function AdminRafflesPage() {
           imagePath,
           rangeStart: parseInt(createForm.rangeStart, 10),
           rangeEnd: parseInt(createForm.rangeEnd, 10),
+          bundles: parsedBundles.bundles,
         }),
       })
       const json = await res.json()
@@ -220,6 +234,15 @@ export default function AdminRafflesPage() {
       const nextCounts = json.data.counts || { total: 0, taken: 0, available: 0 }
       setCounts(nextCounts)
       setEditTotal(String(nextCounts.total))
+      const loadedBundles = (json.data.bundles || []) as TicketBundle[]
+      setEditBundles(
+        loadedBundles.map((bundle) => ({
+          quantity: String(bundle.quantity),
+          price: String(bundle.price),
+          label: bundle.label || '',
+          badge: bundle.badge === 'best' || bundle.badge === 'vip' ? bundle.badge : '',
+        }))
+      )
 
       if (r.endDate) {
         const d = new Date(r.endDate)
@@ -258,6 +281,15 @@ export default function AdminRafflesPage() {
       })
       return
     }
+    const parsedBundles = parseBundleDrafts(editBundles)
+    if ('error' in parsedBundles) {
+      toast({
+        title: 'Paquete inválido',
+        description: parsedBundles.error,
+        variant: 'destructive',
+      })
+      return
+    }
     setSaving(true)
     try {
       const res = await fetch(`/api/admin/raffles/${editingId}`, {
@@ -272,6 +304,7 @@ export default function AdminRafflesPage() {
           endDate: editEndDate || null,
           featured: editFeatured,
           status: editStatus,
+          bundles: parsedBundles.bundles,
         }),
       })
       const json = await res.json()
@@ -487,6 +520,10 @@ export default function AdminRafflesPage() {
                 />
               </div>
             </div>
+            <RaffleBundleFields
+              bundles={createForm.bundles}
+              onChange={(bundles) => setCreateForm({ ...createForm, bundles })}
+            />
             <div className="space-y-2">
               <Label>Fecha de cierre</Label>
               <Input
@@ -618,6 +655,7 @@ export default function AdminRafflesPage() {
                   />
                 </div>
               </div>
+              <RaffleBundleFields bundles={editBundles} onChange={setEditBundles} />
               <div className="space-y-2">
                 <Label>Total de boletos</Label>
                 <Input

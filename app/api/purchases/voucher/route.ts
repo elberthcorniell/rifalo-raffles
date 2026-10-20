@@ -4,6 +4,7 @@ import { sendPurchaseSubmittedEmail, sendPurchaseReceivedCustomerEmail } from '@
 import { getOrgFromHeaders, getOrgBrand } from '@/lib/tenant'
 import { normalizeCheckoutFields } from '@/types/org'
 import { captureServerEvent } from '@/lib/posthog-server'
+import { moneyEquals, priceForQuantity } from '@/lib/ticket-bundles'
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -73,7 +74,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf']
+    const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'application/pdf']
     if (!validTypes.includes(voucher.type)) {
       return NextResponse.json(
         { success: false, error: 'Tipo de archivo no válido. Solo se aceptan imágenes (JPG, PNG) o PDF' },
@@ -81,9 +82,9 @@ export async function POST(request: Request) {
       )
     }
 
-    if (voucher.size > 5 * 1024 * 1024) {
+    if (voucher.size > 10 * 1024 * 1024) {
       return NextResponse.json(
-        { success: false, error: 'El archivo es demasiado grande. Máximo 5MB' },
+        { success: false, error: 'El archivo es demasiado grande. Máximo 10MB' },
         { status: 400 }
       )
     }
@@ -144,6 +145,32 @@ export async function POST(request: Request) {
           success: false,
           error: `El mínimo de boletos para esta rifa es ${minTickets}`,
         },
+        { status: 400 }
+      )
+    }
+
+    const { data: bundleRows, error: bundleError } = await supabase
+      .from('ticket_bundles')
+      .select('quantity, price')
+      .eq('raffle_id', raffleId)
+
+    if (bundleError) {
+      const missingTable = bundleError.code === 'PGRST205' || bundleError.code === '42P01'
+      if (!missingTable) throw bundleError
+    }
+
+    const expectedTotal = priceForQuantity(
+      parsedTicketQuantity,
+      Number(raffle.ticket_price),
+      (bundleRows || []).map((row) => ({
+        quantity: Number(row.quantity),
+        price: Number(row.price),
+      }))
+    )
+
+    if (!Number.isFinite(parsedTotalAmount) || !moneyEquals(parsedTotalAmount, expectedTotal)) {
+      return NextResponse.json(
+        { success: false, error: 'El total no coincide con el precio actual de los boletos' },
         { status: 400 }
       )
     }
@@ -264,7 +291,7 @@ export async function POST(request: Request) {
         raffle_id: raffleId,
         bank_account_id: accountId,
         quantity: parsedTicketQuantity,
-        total_amount: parsedTotalAmount,
+        total_amount: expectedTotal,
         status: 'pending',
         voucher_path: voucherPath,
       })
@@ -312,7 +339,7 @@ export async function POST(request: Request) {
       raffleId,
       raffleName: raffle.title,
       ticketQuantity: parsedTicketQuantity,
-      totalAmount: parsedTotalAmount,
+      totalAmount: expectedTotal,
       purchaseId: purchase.id,
       ticketNumbers: numbers,
       submittedAt: purchase.submitted_at || new Date().toISOString(),
@@ -327,7 +354,7 @@ export async function POST(request: Request) {
       raffle_id: raffleId,
       organization_id: org.id,
       ticket_quantity: parsedTicketQuantity,
-      total_amount: parsedTotalAmount,
+      total_amount: expectedTotal,
       currency: 'DOP',
     })
 
@@ -336,7 +363,7 @@ export async function POST(request: Request) {
         customerName: customerName || 'Cliente',
         customerEmail,
         ticketQuantity: parsedTicketQuantity,
-        totalAmount: parsedTotalAmount,
+        totalAmount: expectedTotal,
         purchaseId: purchase.id,
         ticketNumbers: numbers,
         submittedAt: purchase.submitted_at || new Date().toISOString(),
@@ -354,7 +381,7 @@ export async function POST(request: Request) {
         raffleId,
         ticketQuantity: parsedTicketQuantity,
         ticketNumbers: numbers,
-        totalAmount: parsedTotalAmount,
+        totalAmount: expectedTotal,
         name: customerName,
         whatsappNumber: whatsapp,
         status: 'pending_verification',

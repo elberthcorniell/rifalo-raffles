@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireOrgAdmin } from '@/lib/supabase/require-admin'
-import { getTicketCounts, mapRaffle, syncRaffleTicketTotal } from '@/lib/raffles'
+import { getTicketCounts, listRaffleBundles, mapRaffle, replaceRaffleBundles, syncRaffleTicketTotal } from '@/lib/raffles'
+import { parseBundleInputs } from '@/lib/ticket-bundles'
 import type { DbRaffle } from '@/types/raffle'
 import { captureServerEvent } from '@/lib/posthog-server'
 
@@ -40,7 +41,10 @@ export async function GET(
     .eq('raffle_id', id)
     .order('start_number', { ascending: true })
 
-  const counts = await getTicketCounts([id])
+  const [counts, bundles] = await Promise.all([
+    getTicketCounts([id]),
+    listRaffleBundles(admin, [id]),
+  ])
 
   return NextResponse.json({
     success: true,
@@ -48,6 +52,7 @@ export async function GET(
       raffle: mapRaffle(raffle as DbRaffle, counts[id]),
       ranges: ranges || [],
       counts: counts[id],
+      bundles: bundles[id] || [],
     },
   })
 }
@@ -65,6 +70,12 @@ export async function PATCH(
   }
 
   const body = await request.json()
+  const parsedBundles =
+    body.bundles === undefined ? null : parseBundleInputs(body.bundles)
+  if (parsedBundles && 'error' in parsedBundles) {
+    return NextResponse.json({ success: false, error: parsedBundles.error }, { status: 400 })
+  }
+
   const updates: Record<string, unknown> = {}
 
   if (body.title != null) updates.title = String(body.title).trim()
@@ -125,6 +136,15 @@ export async function PATCH(
       return NextResponse.json({ success: false, error: error.message }, { status: 500 })
     }
     data = current as DbRaffle
+  }
+
+  if (parsedBundles && 'bundles' in parsedBundles) {
+    try {
+      await replaceRaffleBundles(admin, id, parsedBundles.bundles)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'No se pudieron guardar los paquetes'
+      return NextResponse.json({ success: false, error: message }, { status: 400 })
+    }
   }
 
   const counts = await getTicketCounts([id])

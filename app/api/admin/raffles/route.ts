@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireOrgAdmin } from '@/lib/supabase/require-admin'
-import { getTicketCounts, mapRaffle } from '@/lib/raffles'
+import { getTicketCounts, mapRaffle, replaceRaffleBundles } from '@/lib/raffles'
+import { parseBundleInputs } from '@/lib/ticket-bundles'
 import type { DbRaffle } from '@/types/raffle'
 import { captureServerEvent } from '@/lib/posthog-server'
 
@@ -44,6 +45,7 @@ export async function POST(request: Request) {
     imagePath,
     rangeStart,
     rangeEnd,
+    bundles,
   } = body
 
   if (!title || ticketPrice == null) {
@@ -54,6 +56,10 @@ export async function POST(request: Request) {
   }
 
   const parsedMinTickets = Math.max(1, parseInt(String(minTickets), 10) || 1)
+  const parsedBundles = bundles == null ? { bundles: [] } : parseBundleInputs(bundles)
+  if ('error' in parsedBundles) {
+    return NextResponse.json({ success: false, error: parsedBundles.error }, { status: 400 })
+  }
 
   const { data: raffle, error } = await admin
     .from('raffles')
@@ -73,6 +79,14 @@ export async function POST(request: Request) {
 
   if (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+  }
+
+  try {
+    await replaceRaffleBundles(admin, raffle.id, parsedBundles.bundles)
+  } catch (err) {
+    await admin.from('raffles').delete().eq('id', raffle.id)
+    const message = err instanceof Error ? err.message : 'No se pudieron guardar los paquetes'
+    return NextResponse.json({ success: false, error: message }, { status: 400 })
   }
 
   if (rangeStart != null && rangeEnd != null) {

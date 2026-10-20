@@ -39,6 +39,13 @@ import {
   Loader2,
   Check,
   Copy,
+  Flag,
+  Rocket,
+  Trophy,
+  Crown,
+  Zap,
+  Star,
+  SlidersHorizontal,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
@@ -47,6 +54,9 @@ import {
   normalizeCheckoutFields,
   type CheckoutFields,
 } from "@/types/org";
+import type { TicketBundle } from "@/types/raffle";
+import { priceForQuantity } from "@/lib/ticket-bundles";
+import { cn } from "@/lib/utils";
 
 interface BankAccount {
   id: string;
@@ -66,7 +76,19 @@ interface PurchaseDialogProps {
   ticketPrice: number;
   availableTickets: number;
   minTickets?: number;
+  bundles?: TicketBundle[];
+  raffleTitle?: string;
 }
+
+const BUNDLE_ICONS = [Flag, Rocket, Trophy, Crown, Zap];
+const VOUCHER_MAX_BYTES = 10 * 1024 * 1024;
+const VOUCHER_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/jpg",
+  "image/webp",
+  "application/pdf",
+];
 
 const purchaseBaseSchema = z.object({
   name: z.string().optional().default(""),
@@ -79,15 +101,12 @@ const purchaseBaseSchema = z.object({
   voucher: z
     .instanceof(File, { message: "Sube el comprobante de transferencia" })
     .refine(
-      (file) => file.size <= 5 * 1024 * 1024,
-      "El archivo no debe exceder 5MB",
+      (file) => file.size <= VOUCHER_MAX_BYTES,
+      "El archivo no debe exceder 10MB",
     )
     .refine(
-      (file) =>
-        ["image/jpeg", "image/png", "image/jpg", "application/pdf"].includes(
-          file.type,
-        ),
-      "Formato inválido. Solo JPG, PNG o PDF",
+      (file) => VOUCHER_TYPES.includes(file.type),
+      "Formato inválido. Solo JPG, PNG, WEBP o PDF",
     ),
 });
 
@@ -132,6 +151,8 @@ export default function PurchaseDialog({
   ticketPrice,
   availableTickets,
   minTickets = 1,
+  bundles = [],
+  raffleTitle,
 }: PurchaseDialogProps) {
   const effectiveMin = Math.max(
     1,
@@ -140,6 +161,7 @@ export default function PurchaseDialog({
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [customQuantity, setCustomQuantity] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
   const { org } = useOrg();
@@ -188,14 +210,24 @@ export default function PurchaseDialog({
   const ticketQuantity = watch("ticketQuantity");
   const selectedAccountId = watch("accountId");
   const voucherFile = watch("voucher");
-  const totalPrice = ticketQuantity * ticketPrice;
+  const visibleBundles = bundles.filter(
+    (bundle) =>
+      bundle.quantity >= effectiveMin && bundle.quantity <= availableTickets,
+  );
+  const activeBundle =
+    visibleBundles.find((bundle) => bundle.quantity === ticketQuantity) ?? null;
+  const totalPrice = priceForQuantity(ticketQuantity, ticketPrice, visibleBundles);
 
   useEffect(() => {
-    if (open) {
-      setValue("ticketQuantity", effectiveMin);
-      fetchAccounts();
-    }
-  }, [open, effectiveMin]);
+    if (!open) return;
+    const first = bundles.find(
+      (bundle) =>
+        bundle.quantity >= effectiveMin && bundle.quantity <= availableTickets,
+    );
+    setCustomQuantity(!first);
+    setValue("ticketQuantity", first ? first.quantity : effectiveMin);
+    fetchAccounts();
+  }, [open, effectiveMin, availableTickets, raffleId]);
 
   const fetchAccounts = async () => {
     setIsLoadingAccounts(true);
@@ -307,13 +339,18 @@ export default function PurchaseDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-foreground">
-            Comprar Boletos
+      <DialogContent className="max-w-[440px] max-h-[92vh] overflow-y-auto border-white/10 bg-[#101010] p-5 text-white sm:rounded-3xl [&>button]:right-4 [&>button]:top-4 [&>button]:rounded-lg [&>button]:text-white/80 [&>button]:hover:bg-white/10 [&>button]:hover:text-white [&_input]:border-white/15 [&_input]:bg-[#1c1c1c] [&_input]:text-white [&_input]:placeholder:text-white/40">
+        <DialogHeader className="space-y-1 pr-8 text-left">
+          {visibleBundles.length > 0 && (
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-secondary">
+              Elige tu paquete
+            </p>
+          )}
+          <DialogTitle className="text-left text-2xl font-bold uppercase leading-tight text-white">
+            {raffleTitle || "Comprar boletos"}
           </DialogTitle>
-          <DialogDescription>
-            Selecciona la cantidad de boletos y envía el comprobante de
+          <DialogDescription className="sr-only">
+            Selecciona un paquete o una cantidad y envía el comprobante de
             transferencia
           </DialogDescription>
         </DialogHeader>
@@ -331,9 +368,9 @@ export default function PurchaseDialog({
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Nombre completo *</FormLabel>
+                        <FormLabel className="text-white">Nombre completo</FormLabel>
                         <FormControl>
-                          <Input placeholder="Ej: Juan Pérez" {...field} />
+                          <Input placeholder="Tu nombre" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -347,7 +384,7 @@ export default function PurchaseDialog({
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Correo electrónico *</FormLabel>
+                        <FormLabel className="text-white">Correo electrónico</FormLabel>
                         <FormControl>
                           <Input
                             type="email"
@@ -371,13 +408,22 @@ export default function PurchaseDialog({
                     name="whatsappNumber"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Número de WhatsApp *</FormLabel>
+                        <FormLabel className="text-white">Teléfono</FormLabel>
                         <FormControl>
                           <PhoneInput
                             defaultCountry="do"
                             value={field.value || ""}
                             onChange={field.onChange}
-                            placeholder="809 123 4567"
+                            placeholder="Número de teléfono"
+                            inputClassName="!border-white/15 !bg-[#1c1c1c] !text-white placeholder:!text-white/40"
+                            countrySelectorStyleProps={{
+                              buttonStyle: {
+                                backgroundColor: "#1c1c1c",
+                                color: "#fff",
+                                border: "1px solid rgba(255,255,255,0.15)",
+                                borderRight: "none",
+                              },
+                            }}
                           />
                         </FormControl>
                         <FormMessage />
@@ -389,62 +435,136 @@ export default function PurchaseDialog({
             )}
 
 
-                        {/* Ticket Quantity Selector */}
-            <div className="space-y-4 py-4">
-              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                <div>
-                  <Label className="text-base font-medium">
-                    Cantidad de boletos
-                  </Label>
-                  {effectiveMin > 1 && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Mínimo {effectiveMin} boletos
-                    </p>
-                  )}
-                </div>
-                <div className="flex items-center gap-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => handleQuantityChange(-1)}
-                    disabled={ticketQuantity <= effectiveMin}
-                    className="h-9 w-9"
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                  <span className="text-xl font-bold min-w-[3rem] text-center">
-                    {ticketQuantity}
-                  </span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => handleQuantityChange(1)}
-                    disabled={ticketQuantity >= availableTickets}
-                    className="h-9 w-9"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
+            <div className="space-y-3">
+              {visibleBundles.length > 0 && (
+                <div className="space-y-2.5">
+                  {visibleBundles.map((bundle, index) => {
+                    const Icon = BUNDLE_ICONS[index % BUNDLE_ICONS.length];
+                    const selected =
+                      !customQuantity && ticketQuantity === bundle.quantity;
+                    const badge =
+                      bundle.badge === "best"
+                        ? "Mejor opción"
+                        : bundle.badge === "vip"
+                          ? "VIP"
+                          : null;
+                    return (
+                      <button
+                        key={bundle.id}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => {
+                          setCustomQuantity(false);
+                          setValue("ticketQuantity", bundle.quantity);
+                        }}
+                        className={cn(
+                          "relative flex w-full items-center gap-3 rounded-2xl border bg-[#161616] px-3 py-3 text-left transition-shadow",
+                          badge && "mt-3",
+                          selected
+                            ? "border-secondary shadow-[0_0_22px_hsl(var(--secondary)/0.55)]"
+                            : "border-secondary/35 hover:border-secondary/70",
+                        )}
+                      >
+                        {badge && (
+                          <span className="absolute -top-2.5 left-4 inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-secondary-foreground">
+                            <Star className="h-3 w-3 fill-current" />
+                            {badge}
+                          </span>
+                        )}
+                        <span
+                          className={cn(
+                            "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border",
+                            selected
+                              ? "border-secondary text-secondary"
+                              : "border-white/15 text-white/80",
+                          )}
+                        >
+                          <Icon className="h-5 w-5" />
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-sm font-semibold uppercase tracking-wide">
+                          {bundle.label?.trim() || "Paquete"}
+                        </span>
+                        <span className="text-center">
+                          <span className="block text-base font-semibold leading-none">
+                            {bundle.quantity}
+                          </span>
+                          <span className="text-[10px] uppercase tracking-[0.14em] text-white/45">
+                            Boletos
+                          </span>
+                        </span>
+                        <span className="min-w-[4.75rem] text-right text-base font-bold text-secondary">
+                          RD${bundle.price.toLocaleString()}
+                        </span>
+                      </button>
+                    );
+                  })}
 
-              {/* Price Summary */}
-              <div className="space-y-2 p-4 bg-gradient-card border border-card-border rounded-lg">
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>
-                    {ticketQuantity} boletos × RD${ticketPrice.toLocaleString()}
-                  </span>
-                  <span>
-                    RD${(ticketQuantity * ticketPrice).toLocaleString()}
-                  </span>
+                  <button
+                    type="button"
+                    aria-pressed={customQuantity}
+                    onClick={() => setCustomQuantity(true)}
+                    className={cn(
+                      "flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-base font-bold",
+                      customQuantity
+                        ? "bg-secondary text-secondary-foreground"
+                        : "border border-secondary/40 bg-secondary text-secondary-foreground",
+                    )}
+                  >
+                    <SlidersHorizontal className="h-4 w-4" />
+                    Personalizado
+                  </button>
                 </div>
-                <div className="flex justify-between items-center pt-2 border-t border-card-border">
-                  <span className="text-lg font-bold">Total</span>
-                  <span className="text-2xl font-bold text-foreground">
-                    RD${totalPrice.toLocaleString()}
-                  </span>
+              )}
+
+              {(visibleBundles.length === 0 || customQuantity) && (
+                <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-[#161616] px-4 py-3">
+                  <div>
+                    <Label className="text-sm font-medium text-white">
+                      Cantidad de boletos
+                    </Label>
+                    {effectiveMin > 1 && (
+                      <p className="mt-1 text-xs text-white/50">
+                        Mínimo {effectiveMin} boletos
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleQuantityChange(-1)}
+                      disabled={ticketQuantity <= effectiveMin}
+                      className="h-9 w-9 border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                    <span className="min-w-[2rem] text-center text-xl font-bold">
+                      {ticketQuantity}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleQuantityChange(1)}
+                      disabled={ticketQuantity >= availableTickets}
+                      className="h-9 w-9 border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
+              )}
+
+              <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                <span className="text-sm text-white/60">
+                  {activeBundle
+                    ? `${ticketQuantity} boletos · precio especial`
+                    : `${ticketQuantity} boletos × RD$${ticketPrice.toLocaleString()}`}
+                </span>
+                <span className="text-xl font-bold text-white">
+                  RD${totalPrice.toLocaleString()}
+                </span>
               </div>
             </div>
 
@@ -459,11 +579,9 @@ export default function PurchaseDialog({
                   );
                   return (
                     <FormItem>
-                      <FormLabel>
-                        Selecciona la cuenta para transferir *
-                      </FormLabel>
+                      <FormLabel className="text-white">Método de pago</FormLabel>
                       {isLoadingAccounts ? (
-                        <div className="flex items-center justify-center p-4 bg-muted rounded-lg">
+                        <div className="flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 p-4">
                           <Loader2 className="h-5 w-5 animate-spin mr-2" />
                           <span className="text-sm text-muted-foreground">
                             Cargando cuentas...
@@ -476,8 +594,8 @@ export default function PurchaseDialog({
                             onValueChange={(value) => field.onChange(value)}
                           >
                             <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecciona un banco" />
+                              <SelectTrigger className="border-white/15 bg-[#1c1c1c] text-white">
+                                <SelectValue placeholder="Selecciona un método de pago" />
                               </SelectTrigger>
                             </FormControl>
                               <SelectContent className="bg-card text-card-foreground">
@@ -490,7 +608,7 @@ export default function PurchaseDialog({
                           </Select>
 
                           {selectedAccount && (
-                            <div className="rounded-lg border bg-muted p-4 space-y-2">
+                            <div className="space-y-2 rounded-2xl border border-white/10 bg-white/5 p-4">
                               <div className="flex items-center gap-2">
                                 <Building2 className="h-4 w-4 text-secondary" />
                                 <span className="font-semibold">
@@ -533,7 +651,7 @@ export default function PurchaseDialog({
                           )}
                         </div>
                       ) : (
-                        <div className="p-4 bg-muted rounded-lg text-center text-muted-foreground">
+                        <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-center text-white/50">
                           <p>No hay cuentas bancarias disponibles</p>
                         </div>
                       )}
@@ -548,32 +666,41 @@ export default function PurchaseDialog({
                 name="voucher"
                 render={() => (
                   <FormItem>
-                    <FormLabel>Subir comprobante de transferencia *</FormLabel>
                     <FormControl>
-                      <div className="flex items-center gap-4">
-                        <Input
-                          type="file"
-                          accept="image/*,.pdf"
-                          onChange={handleFileChange}
-                          className="flex-1"
-                        />
-                        {voucherFile && (
-                          <span className="text-sm text-muted-foreground">
-                            {voucherFile.name}
-                          </span>
+                      <label
+                        className={cn(
+                          "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-dashed px-6 py-8 text-center transition-colors",
+                          voucherFile
+                            ? "border-secondary bg-secondary/10"
+                            : "border-secondary/70 bg-[#1a140c] hover:bg-secondary/10",
                         )}
-                      </div>
+                      >
+                        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary text-secondary-foreground">
+                          <Upload className="h-5 w-5" />
+                        </span>
+                        <span className="space-y-1">
+                          <span className="block text-base font-semibold text-white">
+                            {voucherFile ? voucherFile.name : "Subir comprobante"}
+                          </span>
+                          <span className="block text-sm text-white/50">
+                            PNG, JPG, WEBP o PDF. Máximo 10 MB.
+                          </span>
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp,application/pdf"
+                          onChange={handleFileChange}
+                          className="sr-only"
+                        />
+                      </label>
                     </FormControl>
-                    <FormDescription>
-                      Formatos aceptados: JPG, PNG, PDF (máx. 5MB)
-                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
               <Button
                 type="submit"
-                className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-secondary font-bold py-6"
+                className="w-full rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/90 font-bold py-6 text-base"
                 size="lg"
                 disabled={form.formState.isSubmitting}
               >
@@ -583,10 +710,7 @@ export default function PurchaseDialog({
                     Enviando...
                   </>
                 ) : (
-                  <>
-                    <Upload className="w-5 h-5 mr-2" />
-                    Enviar Comprobante
-                  </>
+                  "Enviar comprobante"
                 )}
               </Button>
             </div>

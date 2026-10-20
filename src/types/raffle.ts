@@ -2,6 +2,16 @@ export type RaffleStatus = 'draft' | 'active' | 'ended' | 'cancelled'
 export type TicketStatus = 'available' | 'reserved' | 'sold'
 export type PurchaseStatus = 'pending' | 'confirmed' | 'rejected'
 
+export type TicketBundleBadge = '' | 'best' | 'vip'
+
+export interface TicketBundle {
+  id: string
+  quantity: number
+  price: number
+  label?: string
+  badge?: TicketBundleBadge
+}
+
 export interface Raffle {
   id: string
   title: string
@@ -15,6 +25,7 @@ export interface Raffle {
   featured?: boolean
   status?: RaffleStatus
   endDate?: string | null
+  bundles?: TicketBundle[]
 }
 
 export interface BankAccount {

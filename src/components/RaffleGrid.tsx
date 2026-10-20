@@ -191,7 +191,9 @@ const RaffleGrid = () => {
               open={isPurchaseDialogOpen}
               onOpenChange={setIsPurchaseDialogOpen}
               raffleId={selectedRaffle.id}
+              raffleTitle={selectedRaffle.title}
               ticketPrice={selectedRaffle.ticketPrice}
+              bundles={selectedRaffle.bundles}
               availableTickets={selectedRaffle.totalTickets - selectedRaffle.soldTickets}
               minTickets={selectedRaffle.minTickets}
             />

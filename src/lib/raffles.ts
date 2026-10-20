@@ -1,5 +1,6 @@
 import { createAdminClient, hasSupabaseConfig } from '@/lib/supabase/admin'
-import type { DbRaffle, Raffle } from '@/types/raffle'
+import type { BundlePrice } from '@/lib/ticket-bundles'
+import type { DbRaffle, Raffle, TicketBundle } from '@/types/raffle'
 
 export function getPublicImageUrl(path: string | null | undefined): string {
   if (!path) return '/placeholder.svg'
@@ -55,6 +56,68 @@ export async function getTicketCounts(raffleIds: string[]): Promise<
   }
 
   return result
+}
+
+export async function listRaffleBundles(
+  admin: AdminClient,
+  raffleIds: string[]
+): Promise<Record<string, TicketBundle[]>> {
+  const result: Record<string, TicketBundle[]> = {}
+  for (const id of raffleIds) result[id] = []
+  if (raffleIds.length === 0) return result
+
+  const { data, error } = await admin
+    .from('ticket_bundles')
+    .select('id, raffle_id, quantity, price, label, badge')
+    .in('raffle_id', raffleIds)
+    .order('quantity', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching ticket bundles:', error.message)
+    return result
+  }
+
+  for (const row of data || []) {
+    const list = result[row.raffle_id]
+    if (!list) continue
+    const badge = row.badge === 'best' || row.badge === 'vip' ? row.badge : ''
+    list.push({
+      id: row.id,
+      quantity: Number(row.quantity),
+      price: Number(row.price),
+      label: row.label || '',
+      badge,
+    })
+  }
+
+  return result
+}
+
+export async function replaceRaffleBundles(
+  admin: AdminClient,
+  raffleId: string,
+  bundles: BundlePrice[]
+) {
+  const { error: deleteError } = await admin
+    .from('ticket_bundles')
+    .delete()
+    .eq('raffle_id', raffleId)
+
+  if (deleteError) throw new Error(deleteError.message)
+  if (bundles.length === 0) return
+
+  const { error } = await admin.from('ticket_bundles').insert(
+    bundles.map((bundle, index) => ({
+      raffle_id: raffleId,
+      quantity: bundle.quantity,
+      price: bundle.price,
+      label: bundle.label || '',
+      badge: bundle.badge || '',
+      sort_order: index,
+    }))
+  )
+
+  if (error) throw new Error(error.message)
 }
 
 const MAX_RAFFLE_TICKETS = 100000
@@ -285,8 +348,15 @@ export async function fetchRaffles(options?: {
     if (error) throw error
 
     const rows = (data || []) as DbRaffle[]
-    const counts = await getTicketCounts(rows.map((r) => r.id))
-    const raffles = rows.map((row) => mapRaffle(row, counts[row.id]))
+    const ids = rows.map((r) => r.id)
+    const [counts, bundles] = await Promise.all([
+      getTicketCounts(ids),
+      listRaffleBundles(supabase, ids),
+    ])
+    const raffles = rows.map((row) => ({
+      ...mapRaffle(row, counts[row.id]),
+      bundles: bundles[row.id] || [],
+    }))
 
     return {
       raffles,
@@ -316,6 +386,12 @@ export async function fetchRaffleById(id: string, orgId: string): Promise<Raffle
   if (error) throw error
   if (!data) return null
 
-  const counts = await getTicketCounts([id])
-  return mapRaffle(data as DbRaffle, counts[id])
+  const [counts, bundles] = await Promise.all([
+    getTicketCounts([id]),
+    listRaffleBundles(supabase, [id]),
+  ])
+  return {
+    ...mapRaffle(data as DbRaffle, counts[id]),
+    bundles: bundles[id] || [],
+  }
 }

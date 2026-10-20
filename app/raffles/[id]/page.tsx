@@ -274,9 +274,11 @@ export default function RaffleDetailPage() {
             open={isPurchaseDialogOpen}
             onOpenChange={setIsPurchaseDialogOpen}
             raffleId={raffle.id}
+            raffleTitle={raffle.title}
             ticketPrice={raffle.ticketPrice}
             availableTickets={remainingTickets}
             minTickets={raffle.minTickets}
+            bundles={raffle.bundles}
           />
         </>
       )}

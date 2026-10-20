@@ -188,9 +188,11 @@ const Hero = ({
           open={purchaseDialogOpen}
           onOpenChange={setPurchaseDialogOpen}
           raffleId={firstRaffle.id}
+          raffleTitle={firstRaffle.title}
           ticketPrice={firstRaffle.ticketPrice}
           availableTickets={firstRaffle.totalTickets - firstRaffle.soldTickets}
           minTickets={firstRaffle.minTickets}
+          bundles={firstRaffle.bundles}
         />
       )}
     </section>

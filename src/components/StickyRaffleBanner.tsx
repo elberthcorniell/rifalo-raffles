@@ -36,9 +36,11 @@ const StickyRaffleBanner = () => {
         open={purchaseOpen}
         onOpenChange={setPurchaseOpen}
         raffleId={raffle.id}
+        raffleTitle={raffle.title}
         ticketPrice={raffle.ticketPrice}
         availableTickets={raffle.totalTickets - raffle.soldTickets}
         minTickets={raffle.minTickets}
+        bundles={raffle.bundles}
       />
     </>
   );
