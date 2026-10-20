@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/table'
 import { ChevronLeft, ChevronRight, Loader2, ShieldCheck } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { getTenantUrl } from '@/lib/constants'
 import type { RaffleVerificationStatus } from '@/types/raffle'
 
 const PAGE_SIZE = 25
@@ -70,6 +71,21 @@ function formatDate(value: string) {
     dateStyle: 'medium',
     timeStyle: 'short',
   })
+}
+
+function rafflePageUrl(raffle: SuperadminRaffle) {
+  if (!raffle.org) return null
+  return getTenantUrl(raffle.org.slug, `/raffles/${raffle.id}`)
+}
+
+function RaffleTitle({ raffle }: { raffle: SuperadminRaffle }) {
+  const href = rafflePageUrl(raffle)
+  if (!href) return <>{raffle.title}</>
+  return (
+    <a href={href} target="_blank" rel="noreferrer" className="hover:underline">
+      {raffle.title}
+    </a>
+  )
 }
 
 function TicketsCell({ sold, total }: { sold: number; total: number }) {
@@ -259,7 +275,9 @@ export default function SuperadminRafflesPage() {
           raffles.map((r) => (
             <article key={r.id} className="rounded-lg border bg-white p-4 space-y-2">
               <div className="flex items-start justify-between gap-2">
-                <p className="font-medium leading-tight">{r.title}</p>
+                <p className="font-medium leading-tight">
+                  <RaffleTitle raffle={r} />
+                </p>
                 <Badge variant={r.status === 'active' ? 'default' : 'outline'}>
                   {statusLabel[r.status] || r.status}
                 </Badge>
@@ -315,7 +333,7 @@ export default function SuperadminRafflesPage() {
               raffles.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">
-                    {r.title}
+                    <RaffleTitle raffle={r} />
                     {r.featured && (
                       <Badge className="ml-2" variant="secondary">
                         Destacada

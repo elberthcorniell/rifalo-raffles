@@ -5,7 +5,7 @@ import { getOrgBrand } from '@/lib/tenant'
 import { normalizeCheckoutFields } from '@/types/org'
 import type { Organization } from '@/types/org'
 import { captureServerEvent } from '@/lib/posthog-server'
-import { moneyEquals, priceForQuantity } from '@/lib/ticket-bundles'
+import { maxTicketsPerPurchase, moneyEquals, priceForQuantity } from '@/lib/ticket-bundles'
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -224,6 +224,24 @@ export async function processVoucherPurchase({
       {
         success: false,
         error: `No hay suficientes boletos disponibles. Disponibles: ${availableCount ?? 0}, Solicitados: ${parsedTicketQuantity}`,
+      },
+      { status: 400 }
+    )
+  }
+
+  const { count: totalCount, error: totalError } = await supabase
+    .from('tickets')
+    .select('id', { count: 'exact', head: true })
+    .eq('raffle_id', raffleId)
+
+  if (totalError) throw totalError
+
+  const maxTickets = maxTicketsPerPurchase(totalCount ?? 0)
+  if (parsedTicketQuantity > maxTickets) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: `El máximo por compra es ${maxTickets} boletos (10% del total).`,
       },
       { status: 400 }
     )

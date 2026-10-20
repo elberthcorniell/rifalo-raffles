@@ -191,6 +191,7 @@ const Hero = ({
           raffleTitle={firstRaffle.title}
           ticketPrice={firstRaffle.ticketPrice}
           availableTickets={firstRaffle.totalTickets - firstRaffle.soldTickets}
+          totalTickets={firstRaffle.totalTickets}
           minTickets={firstRaffle.minTickets}
           bundles={firstRaffle.bundles}
         />

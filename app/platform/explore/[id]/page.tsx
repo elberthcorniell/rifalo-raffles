@@ -254,6 +254,7 @@ export default function PlatformExploreRafflePage() {
             raffleTitle={raffle.title}
             ticketPrice={raffle.ticketPrice}
             availableTickets={remainingTickets}
+            totalTickets={raffle.totalTickets}
             minTickets={raffle.minTickets}
             bundles={raffle.bundles}
             accountsUrl={`/api/platform/raffles/${raffle.id}/accounts`}

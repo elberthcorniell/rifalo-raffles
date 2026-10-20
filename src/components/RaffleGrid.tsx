@@ -195,6 +195,7 @@ const RaffleGrid = () => {
               ticketPrice={selectedRaffle.ticketPrice}
               bundles={selectedRaffle.bundles}
               availableTickets={selectedRaffle.totalTickets - selectedRaffle.soldTickets}
+              totalTickets={selectedRaffle.totalTickets}
               minTickets={selectedRaffle.minTickets}
             />
           )}

@@ -26,6 +26,12 @@ export function regularTotal(quantity: number, ticketPrice: number) {
   return roundMoney(quantity * ticketPrice)
 }
 
+/** One purchase cannot exceed 10% of the raffle's total tickets. */
+export function maxTicketsPerPurchase(totalTickets: number) {
+  const total = Math.max(0, Math.floor(Number(totalTickets) || 0))
+  return Math.max(1, Math.floor(total * 0.1))
+}
+
 export function moneyEquals(a: number, b: number) {
   return Math.abs(roundMoney(a) - roundMoney(b)) < 0.001
 }

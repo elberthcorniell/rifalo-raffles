@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -55,7 +55,7 @@ import {
   type CheckoutFields,
 } from "@/types/org";
 import type { TicketBundle } from "@/types/raffle";
-import { priceForQuantity } from "@/lib/ticket-bundles";
+import { maxTicketsPerPurchase, priceForQuantity } from "@/lib/ticket-bundles";
 import { cn } from "@/lib/utils";
 
 interface BankAccount {
@@ -75,6 +75,7 @@ interface PurchaseDialogProps {
   raffleId: string;
   ticketPrice: number;
   availableTickets: number;
+  totalTickets: number;
   minTickets?: number;
   bundles?: TicketBundle[];
   raffleTitle?: string;
@@ -161,6 +162,7 @@ export default function PurchaseDialog({
   raffleId,
   ticketPrice,
   availableTickets,
+  totalTickets,
   minTickets = 1,
   bundles = [],
   raffleTitle,
@@ -172,6 +174,10 @@ export default function PurchaseDialog({
   const effectiveMin = Math.max(
     1,
     Math.min(minTickets, availableTickets || minTickets),
+  );
+  const effectiveMax = Math.min(
+    Math.max(availableTickets, 0),
+    maxTicketsPerPurchase(totalTickets),
   );
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
@@ -228,25 +234,38 @@ export default function PurchaseDialog({
   const ticketQuantity = watch("ticketQuantity");
   const selectedAccountId = watch("accountId");
   const voucherFile = watch("voucher");
+  const quantityCeiling = effectiveMax;
+  const quantityFloor =
+    effectiveMax > 0 ? Math.min(effectiveMin, effectiveMax) : effectiveMin;
+  const [quantityText, setQuantityText] = useState(String(quantityFloor));
+  const quantityFocused = useRef(false);
   const visibleBundles = bundles.filter(
     (bundle) =>
-      bundle.quantity >= effectiveMin && bundle.quantity <= availableTickets,
+      bundle.quantity >= quantityFloor && bundle.quantity <= quantityCeiling,
   );
   const activeBundle =
     visibleBundles.find((bundle) => bundle.quantity === ticketQuantity) ?? null;
   const totalPrice = priceForQuantity(ticketQuantity, ticketPrice, visibleBundles);
 
   useEffect(() => {
+    if (quantityFocused.current) return;
+    setQuantityText(String(ticketQuantity));
+  }, [ticketQuantity]);
+
+  useEffect(() => {
     if (!open) return;
     const first = bundles.find(
       (bundle) =>
-        bundle.quantity >= effectiveMin && bundle.quantity <= availableTickets,
+        bundle.quantity >= quantityFloor && bundle.quantity <= quantityCeiling,
     );
     setCustomQuantity(!first);
-    setValue("ticketQuantity", first ? first.quantity : effectiveMin);
+    setValue(
+      "ticketQuantity",
+      first ? first.quantity : quantityFloor,
+    );
     fetchAccounts();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh accounts when dialog opens for this raffle
-  }, [open, effectiveMin, availableTickets, raffleId, accountsUrl]);
+  }, [open, quantityFloor, quantityCeiling, raffleId, accountsUrl]);
 
   const fetchAccounts = async () => {
     setIsLoadingAccounts(true);
@@ -269,10 +288,39 @@ export default function PurchaseDialog({
     }
   };
 
+  const clampQuantity = (value: number) => {
+    if (quantityCeiling <= 0) return quantityFloor;
+    return Math.min(quantityCeiling, Math.max(quantityFloor, value));
+  };
+
+  const commitQuantity = (raw: string) => {
+    const parsed = parseInt(raw, 10);
+    const next = clampQuantity(Number.isFinite(parsed) ? parsed : ticketQuantity);
+    setValue("ticketQuantity", next);
+    setQuantityText(String(next));
+  };
+
   const handleQuantityChange = (delta: number) => {
-    const newQuantity = ticketQuantity + delta;
-    if (newQuantity >= effectiveMin && newQuantity <= availableTickets) {
-      setValue("ticketQuantity", newQuantity);
+    const next = clampQuantity(ticketQuantity + delta);
+    setValue("ticketQuantity", next);
+    setQuantityText(String(next));
+  };
+
+  const handleQuantityInput = (raw: string) => {
+    const digits = raw.replace(/\D/g, "");
+    if (digits === "") {
+      setQuantityText("");
+      return;
+    }
+    const parsed = parseInt(digits, 10);
+    if (quantityCeiling > 0 && parsed > quantityCeiling) {
+      setValue("ticketQuantity", quantityCeiling);
+      setQuantityText(String(quantityCeiling));
+      return;
+    }
+    setQuantityText(digits);
+    if (parsed >= 1 && parsed <= quantityCeiling) {
+      setValue("ticketQuantity", parsed);
     }
   };
 
@@ -284,10 +332,13 @@ export default function PurchaseDialog({
   };
 
   const onSubmit = async (data: PurchaseFormData) => {
-    if (data.ticketQuantity < effectiveMin) {
+    if (data.ticketQuantity < quantityFloor || data.ticketQuantity > quantityCeiling) {
       toast({
         title: "Cantidad inválida",
-        description: `El mínimo de boletos es ${effectiveMin}`,
+        description:
+          data.ticketQuantity > quantityCeiling
+            ? `El máximo por compra es ${quantityCeiling} boletos`
+            : `El mínimo de boletos es ${quantityFloor}`,
         variant: "destructive",
       });
       return;
@@ -553,11 +604,10 @@ export default function PurchaseDialog({
                     <Label className="text-sm font-medium text-white">
                       Cantidad de boletos
                     </Label>
-                    {effectiveMin > 1 && (
-                      <p className="mt-1 text-xs text-white/50">
-                        Mínimo {effectiveMin} boletos
-                      </p>
-                    )}
+                    <p className="mt-1 text-xs text-white/50">
+                      {quantityFloor > 1 ? `Mínimo ${quantityFloor} · ` : ""}
+                      Máximo {quantityCeiling}
+                    </p>
                   </div>
                   <div className="flex items-center gap-3">
                     <Button
@@ -565,20 +615,35 @@ export default function PurchaseDialog({
                       variant="outline"
                       size="icon"
                       onClick={() => handleQuantityChange(-1)}
-                      disabled={ticketQuantity <= effectiveMin}
+                      disabled={ticketQuantity <= quantityFloor}
                       className="h-9 w-9 border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
                     >
                       <Minus className="h-4 w-4" />
                     </Button>
-                    <span className="min-w-[2rem] text-center text-xl font-bold">
-                      {ticketQuantity}
-                    </span>
+                    <input
+                      inputMode="numeric"
+                      aria-label="Cantidad de boletos"
+                      size={Math.max(2, quantityText.length)}
+                      value={quantityText}
+                      onFocus={(e) => {
+                        quantityFocused.current = true;
+                        const input = e.currentTarget;
+                        requestAnimationFrame(() => input.select());
+                      }}
+                      onClick={(e) => e.currentTarget.select()}
+                      onChange={(e) => handleQuantityInput(e.target.value)}
+                      onBlur={() => {
+                        quantityFocused.current = false;
+                        commitQuantity(quantityText);
+                      }}
+                      className="w-auto bg-transparent text-center text-xl font-bold tabular-nums text-white outline-none"
+                    />
                     <Button
                       type="button"
                       variant="outline"
                       size="icon"
                       onClick={() => handleQuantityChange(1)}
-                      disabled={ticketQuantity >= availableTickets}
+                      disabled={ticketQuantity >= quantityCeiling}
                       className="h-9 w-9 border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
                     >
                       <Plus className="h-4 w-4" />

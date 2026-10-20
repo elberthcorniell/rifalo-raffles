@@ -277,6 +277,7 @@ export default function RaffleDetailPage() {
             raffleTitle={raffle.title}
             ticketPrice={raffle.ticketPrice}
             availableTickets={remainingTickets}
+            totalTickets={raffle.totalTickets}
             minTickets={raffle.minTickets}
             bundles={raffle.bundles}
           />
