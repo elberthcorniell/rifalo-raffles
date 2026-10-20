@@ -186,10 +186,6 @@ export default function PlatformExploreRafflePage() {
                       <span className="text-sm font-bold">{progressLabel}</span>
                     </div>
                     <Progress value={progressPercentage} className="h-3" />
-                    <p className="text-sm text-muted-foreground">
-                      {raffle.soldTickets.toLocaleString('es-DO')} de{' '}
-                      {raffle.totalTickets.toLocaleString('es-DO')} boletos
-                    </p>
                   </div>
                 </Card>
 
