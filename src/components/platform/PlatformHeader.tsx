@@ -18,7 +18,7 @@ export function PlatformHeader() {
         <div className="flex items-center gap-0.5 sm:gap-2">
           {SHOW_EXPLORE && (
             <Button variant="ghost" size="sm" className="px-2 text-white hover:bg-white/10 hover:text-white sm:px-3" asChild>
-              <Link href="/explore">Explorar</Link>
+              <Link href="/explore">Rifas verificadas</Link>
             </Button>
           )}
           <Button variant="ghost" size="sm" className="px-2 text-white hover:bg-white/10 hover:text-white sm:px-3" asChild>

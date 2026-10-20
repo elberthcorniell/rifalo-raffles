@@ -21,6 +21,8 @@ export async function GET(request: Request) {
     Math.max(1, parseInt(url.searchParams.get('pageSize') || String(DEFAULT_PAGE_SIZE), 10) || DEFAULT_PAGE_SIZE)
   )
   const q = escapeIlike(url.searchParams.get('q') || '')
+  const verification = escapeIlike(url.searchParams.get('verification') || '')
+  const allowedVerification = new Set(['none', 'pending', 'verified', 'rejected'])
 
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
@@ -28,10 +30,14 @@ export async function GET(request: Request) {
   let query = admin
     .from('raffles')
     .select(
-      'id, title, status, featured, ticket_price, created_at, org_id, organizations ( id, name, slug )',
+      'id, title, status, featured, ticket_price, created_at, org_id, verification_status, verification_requested_at, verification_reviewed_at, verification_note, organizations ( id, name, slug )',
       { count: 'exact' }
     )
     .order('created_at', { ascending: false })
+
+  if (verification && allowedVerification.has(verification)) {
+    query = query.eq('verification_status', verification)
+  }
 
   if (q) {
     const { data: matchingOrgs, error: orgError } = await admin
@@ -86,6 +92,10 @@ export async function GET(request: Request) {
       totalTickets: counts?.total ?? 0,
       soldTickets: counts?.taken ?? 0,
       createdAt: row.created_at,
+      verificationStatus: row.verification_status || 'none',
+      verificationRequestedAt: row.verification_requested_at,
+      verificationReviewedAt: row.verification_reviewed_at,
+      verificationNote: row.verification_note,
       org: org
         ? {
             id: org.id,

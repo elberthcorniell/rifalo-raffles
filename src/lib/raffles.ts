@@ -311,6 +311,10 @@ export function mapRaffle(
     featured: row.featured === true,
     status: row.status,
     endDate: row.end_date,
+    verificationStatus: row.verification_status || 'none',
+    verificationNote: row.verification_note ?? null,
+    verificationRequestedAt: row.verification_requested_at ?? null,
+    verificationReviewedAt: row.verification_reviewed_at ?? null,
   }
 }
 

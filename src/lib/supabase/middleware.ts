@@ -225,7 +225,12 @@ async function continueAsPlatform(
     })
   }
 
-  if (pathname === '/signup' || pathname === '/login' || pathname === '/explore') {
+  if (
+    pathname === '/signup' ||
+    pathname === '/login' ||
+    pathname === '/explore' ||
+    pathname.startsWith('/explore/')
+  ) {
     const rewriteUrl = request.nextUrl.clone()
     rewriteUrl.pathname = `/platform${pathname}`
     return NextResponse.rewrite(rewriteUrl, {

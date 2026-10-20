@@ -91,13 +91,28 @@ export async function PATCH(
 
   const { data: existing } = await admin
     .from('raffles')
-    .select('id')
+    .select('id, title, description, image_path, verification_status')
     .eq('id', id)
     .eq('org_id', org.id)
     .maybeSingle()
 
   if (!existing) {
     return NextResponse.json({ success: false, error: 'Rifa no encontrada' }, { status: 404 })
+  }
+
+  // Prize edits send a verified raffle back to pending review.
+  if (existing.verification_status === 'verified') {
+    const prizeChanged =
+      (updates.title != null && updates.title !== existing.title) ||
+      (updates.description != null && updates.description !== existing.description) ||
+      (updates.image_path !== undefined && updates.image_path !== existing.image_path)
+
+    if (prizeChanged) {
+      updates.verification_status = 'pending'
+      updates.verification_requested_at = new Date().toISOString()
+      updates.verification_reviewed_at = null
+      updates.verification_note = null
+    }
   }
 
   if (body.totalTickets != null) {

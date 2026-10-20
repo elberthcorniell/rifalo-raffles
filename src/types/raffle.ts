@@ -1,4 +1,5 @@
 export type RaffleStatus = 'draft' | 'active' | 'ended' | 'cancelled'
+export type RaffleVerificationStatus = 'none' | 'pending' | 'verified' | 'rejected'
 export type TicketStatus = 'available' | 'reserved' | 'sold'
 export type PurchaseStatus = 'pending' | 'confirmed' | 'rejected'
 
@@ -26,6 +27,10 @@ export interface Raffle {
   status?: RaffleStatus
   endDate?: string | null
   bundles?: TicketBundle[]
+  verificationStatus?: RaffleVerificationStatus
+  verificationNote?: string | null
+  verificationRequestedAt?: string | null
+  verificationReviewedAt?: string | null
 }
 
 export interface BankAccount {
@@ -53,6 +58,10 @@ export interface DbRaffle {
   end_date: string | null
   featured: boolean
   status: RaffleStatus
+  verification_status?: RaffleVerificationStatus
+  verification_requested_at?: string | null
+  verification_reviewed_at?: string | null
+  verification_note?: string | null
   created_at?: string
   updated_at?: string
 }

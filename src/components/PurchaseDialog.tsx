@@ -78,6 +78,17 @@ interface PurchaseDialogProps {
   minTickets?: number;
   bundles?: TicketBundle[];
   raffleTitle?: string;
+  /** Override tenant `/api/accounts` (e.g. platform verified checkout). */
+  accountsUrl?: string;
+  /** Override tenant `/api/purchases/voucher`. */
+  purchaseUrl?: string;
+  /** When set, used instead of the org brand provider checkout fields. */
+  checkoutFieldsOverride?: CheckoutFields;
+  /**
+   * Where to send the buyer after a successful purchase when phone was collected.
+   * Pass `null` to stay on the current page. Defaults to `/verify-tickets`.
+   */
+  afterPurchaseHref?: string | null;
 }
 
 const BUNDLE_ICONS = [Flag, Rocket, Trophy, Crown, Zap];
@@ -153,6 +164,10 @@ export default function PurchaseDialog({
   minTickets = 1,
   bundles = [],
   raffleTitle,
+  accountsUrl = "/api/accounts",
+  purchaseUrl = "/api/purchases/voucher",
+  checkoutFieldsOverride,
+  afterPurchaseHref,
 }: PurchaseDialogProps) {
   const effectiveMin = Math.max(
     1,
@@ -166,8 +181,11 @@ export default function PurchaseDialog({
   const router = useRouter();
   const { org } = useOrg();
   const checkoutFields = useMemo(
-    () => normalizeCheckoutFields(org?.checkout_fields),
-    [org?.checkout_fields],
+    () =>
+      checkoutFieldsOverride
+        ? normalizeCheckoutFields(checkoutFieldsOverride)
+        : normalizeCheckoutFields(org?.checkout_fields),
+    [checkoutFieldsOverride, org?.checkout_fields],
   );
   const schema = useMemo(
     () => purchaseFormSchema(checkoutFields),
@@ -227,12 +245,13 @@ export default function PurchaseDialog({
     setCustomQuantity(!first);
     setValue("ticketQuantity", first ? first.quantity : effectiveMin);
     fetchAccounts();
-  }, [open, effectiveMin, availableTickets, raffleId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh accounts when dialog opens for this raffle
+  }, [open, effectiveMin, availableTickets, raffleId, accountsUrl]);
 
   const fetchAccounts = async () => {
     setIsLoadingAccounts(true);
     try {
-      const response = await fetch("/api/accounts");
+      const response = await fetch(accountsUrl);
       const result = await response.json();
       if (result.success && result.data.length > 0) {
         setAccounts(result.data);
@@ -291,7 +310,7 @@ export default function PurchaseDialog({
         formData.append("email", data.email.trim());
       }
 
-      const response = await fetch("/api/purchases/voucher", {
+      const response = await fetch(purchaseUrl, {
         method: "POST",
         body: formData,
       });
@@ -315,7 +334,19 @@ export default function PurchaseDialog({
         });
         onOpenChange(false);
         if (checkoutFields.phone && whatsapp) {
-          router.push(`/verify-tickets?phone=${encodeURIComponent(whatsapp)}`);
+          const href =
+            afterPurchaseHref === undefined
+              ? `/verify-tickets?phone=${encodeURIComponent(whatsapp)}`
+              : afterPurchaseHref === null
+                ? null
+                : `${afterPurchaseHref}${afterPurchaseHref.includes("?") ? "&" : "?"}phone=${encodeURIComponent(whatsapp)}`;
+          if (href) {
+            if (href.startsWith("http://") || href.startsWith("https://")) {
+              window.location.assign(href);
+            } else {
+              router.push(href);
+            }
+          }
         }
       } else {
         toast({

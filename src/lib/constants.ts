@@ -5,8 +5,8 @@ export const PLATFORM = {
   copyright: `© ${new Date().getFullYear()} Rifalo`,
 } as const
 
-/** Public catalog, Explorar nav, and homepage raffle list. Off until there are more live raffles. */
-export const SHOW_EXPLORE = false
+/** Public verified-raffle catalog, nav, and homepage section. */
+export const SHOW_EXPLORE = true
 
 export type OrgPlan = 'free' | 'plus' | 'unlimited'
 

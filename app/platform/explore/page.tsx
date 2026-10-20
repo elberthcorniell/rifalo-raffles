@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button'
 import { SHOW_EXPLORE } from '@/lib/constants'
 
 export const metadata: Metadata = {
-  title: 'Explorar rifas',
-  description: 'Rifas que las organizaciones publican en Rifalo.',
+  title: 'Rifas verificadas',
+  description:
+    'Rifas cuyo premio confirmamos y cuyo organizador es de confianza. Compra en Rifalo o en el sitio del organizador.',
 }
 
 export default async function ExplorePage() {
@@ -22,22 +23,22 @@ export default async function ExplorePage() {
       <PlatformHeader />
       <main className="max-w-6xl mx-auto px-4 py-12 md:py-16">
         <div className="mb-10 max-w-2xl space-y-3">
-          <h1 className="text-3xl md:text-4xl font-bold text-[#111111]">Rifas de nuestros clientes</h1>
+          <h1 className="text-3xl md:text-4xl font-bold text-[#111111]">Rifas verificadas</h1>
           <p className="text-muted-foreground">
-            Un catálogo de las rifas que las organizaciones publican en su propio sitio.
+            Premios que revisamos y organizadores en los que confiamos. Puedes comprar aquí o en el
+            sitio de cada organización; el pago va a sus cuentas bancarias.
           </p>
         </div>
         {raffles.length > 0 ? (
           <CatalogGrid raffles={raffles} />
         ) : (
           <div className="rounded-2xl border bg-card px-6 py-16 text-center space-y-4">
-            <p className="text-lg font-semibold text-[#111111]">Todavía no hay rifas</p>
+            <p className="text-lg font-semibold text-[#111111]">Todavía no hay rifas verificadas</p>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              Cuando un cliente publique una rifa, va a aparecer aquí con su premio, el precio del
-              boleto y cuánto se vendió.
+              Cuando un organizador solicite verificación y la aprobemos, su rifa aparecerá aquí.
             </p>
             <Button className="bg-[#FFD000] text-black hover:bg-[#F0C400]" asChild>
-              <Link href="/signup">Crear la primera</Link>
+              <Link href="/signup">Crear mi rifa</Link>
             </Button>
           </div>
         )}

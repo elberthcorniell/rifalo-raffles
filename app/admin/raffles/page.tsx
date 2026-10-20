@@ -30,8 +30,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import type { Raffle, TicketBundle } from '@/types/raffle'
-import { Loader2, Plus } from 'lucide-react'
+import type { Raffle, RaffleVerificationStatus, TicketBundle } from '@/types/raffle'
+import { Loader2, Plus, ShieldCheck } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import RaffleBundleFields from '@/components/admin/RaffleBundleFields'
 import { parseBundleDrafts, type BundleDraft } from '@/lib/ticket-bundles'
@@ -41,6 +41,13 @@ const statusLabel: Record<string, string> = {
   active: 'Activa',
   ended: 'Finalizada',
   cancelled: 'Cancelada',
+}
+
+const verificationLabel: Record<RaffleVerificationStatus, string> = {
+  none: '',
+  pending: 'En revisión',
+  verified: 'Verificada',
+  rejected: 'Rechazada',
 }
 
 interface Range {
@@ -135,6 +142,9 @@ export default function AdminRafflesPage() {
   const [newEnd, setNewEnd] = useState('')
   const [addingRange, setAddingRange] = useState(false)
   const [editBundles, setEditBundles] = useState<BundleDraft[]>([])
+  const [editVerificationStatus, setEditVerificationStatus] =
+    useState<RaffleVerificationStatus>('none')
+  const [requestingId, setRequestingId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     const res = await fetch('/api/admin/raffles')
@@ -229,6 +239,7 @@ export default function AdminRafflesPage() {
       setEditMinTickets(String(r.minTickets || 1))
       setEditFeatured(!!r.featured)
       setEditStatus(r.status || 'draft')
+      setEditVerificationStatus(r.verificationStatus || 'none')
       setEditImage(r.image || null)
       setRanges(json.data.ranges || [])
       const nextCounts = json.data.counts || { total: 0, taken: 0, available: 0 }
@@ -319,6 +330,28 @@ export default function AdminRafflesPage() {
     }
   }
 
+  const handleRequestVerification = async (id: string) => {
+    setRequestingId(id)
+    try {
+      const res = await fetch(`/api/admin/raffles/${id}/verification`, { method: 'POST' })
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error)
+      toast({
+        title: 'Solicitud enviada',
+        description: 'Revisaremos el premio y la organización.',
+      })
+      await load()
+    } catch (err: any) {
+      toast({
+        title: 'Error',
+        description: err.message || 'No se pudo solicitar la verificación',
+        variant: 'destructive',
+      })
+    } finally {
+      setRequestingId(null)
+    }
+  }
+
   const handleAddRange = async () => {
     if (!editingId) return
     setAddingRange(true)
@@ -391,9 +424,41 @@ export default function AdminRafflesPage() {
                 RD$ {r.ticketPrice.toLocaleString('es-DO')} · {r.soldTickets} / {r.totalTickets} · {r.timeLeft}
               </p>
               {r.featured && <Badge variant="secondary">Destacada</Badge>}
-              <Button variant="outline" size="sm" className="w-full" onClick={() => openEdit(r.id)}>
-                Editar
-              </Button>
+              {(r.verificationStatus === 'pending' ||
+                r.verificationStatus === 'verified' ||
+                r.verificationStatus === 'rejected') && (
+                <Badge
+                  variant={r.verificationStatus === 'verified' ? 'default' : 'outline'}
+                  className="gap-1"
+                >
+                  {r.verificationStatus === 'verified' && <ShieldCheck className="h-3 w-3" />}
+                  {verificationLabel[r.verificationStatus]}
+                </Badge>
+              )}
+              {r.verificationStatus === 'rejected' && r.verificationNote && (
+                <p className="text-xs text-destructive">{r.verificationNote}</p>
+              )}
+              <div className="flex flex-col gap-2">
+                <Button variant="outline" size="sm" className="w-full" onClick={() => openEdit(r.id)}>
+                  Editar
+                </Button>
+                {r.status === 'active' &&
+                  (r.verificationStatus === 'none' || r.verificationStatus === 'rejected') && (
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      disabled={requestingId === r.id}
+                      onClick={() => handleRequestVerification(r.id)}
+                    >
+                      {requestingId === r.id ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <ShieldCheck className="h-4 w-4 mr-2" />
+                      )}
+                      Solicitar verificación
+                    </Button>
+                  )}
+              </div>
             </div>
           </article>
         ))}
@@ -409,20 +474,21 @@ export default function AdminRafflesPage() {
               <TableHead>Precio</TableHead>
               <TableHead>Boletos</TableHead>
               <TableHead>Tiempo</TableHead>
+              <TableHead>Verificación</TableHead>
               <TableHead></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   Cargando...
                 </TableCell>
               </TableRow>
             )}
             {!loading && raffles.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   No hay rifas. Crea la primera.
                 </TableCell>
               </TableRow>
@@ -460,10 +526,51 @@ export default function AdminRafflesPage() {
                   {r.soldTickets} / {r.totalTickets}
                 </TableCell>
                 <TableCell>{r.timeLeft}</TableCell>
+                <TableCell>
+                  <div className="space-y-1">
+                    {r.verificationStatus === 'none' || !r.verificationStatus ? (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    ) : (
+                      <Badge
+                        variant={r.verificationStatus === 'verified' ? 'default' : 'outline'}
+                        className="gap-1"
+                      >
+                        {r.verificationStatus === 'verified' && (
+                          <ShieldCheck className="h-3 w-3" />
+                        )}
+                        {verificationLabel[r.verificationStatus]}
+                      </Badge>
+                    )}
+                    {r.verificationStatus === 'rejected' && r.verificationNote && (
+                      <p className="text-xs text-destructive max-w-[12rem]">
+                        {r.verificationNote}
+                      </p>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell className="text-right">
-                  <Button variant="outline" size="sm" onClick={() => openEdit(r.id)}>
-                    Editar
-                  </Button>
+                  <div className="flex flex-col items-end gap-2">
+                    <Button variant="outline" size="sm" onClick={() => openEdit(r.id)}>
+                      Editar
+                    </Button>
+                    {r.status === 'active' &&
+                      (r.verificationStatus === 'none' ||
+                        r.verificationStatus === 'rejected' ||
+                        !r.verificationStatus) && (
+                        <Button
+                          size="sm"
+                          disabled={requestingId === r.id}
+                          onClick={() => handleRequestVerification(r.id)}
+                        >
+                          {requestingId === r.id ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <ShieldCheck className="h-4 w-4 mr-2" />
+                          )}
+                          Solicitar verificación
+                        </Button>
+                      )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -615,6 +722,13 @@ export default function AdminRafflesPage() {
               {counts.taken} · Total: {parseInt(editTotal, 10) || 0}
             </DialogDescription>
           </DialogHeader>
+
+          {editVerificationStatus === 'verified' && !editLoading && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              Esta rifa está verificada. Si cambias el título, la descripción o la imagen, volverá a
+              revisión y saldrá del catálogo hasta que la aprueben de nuevo.
+            </div>
+          )}
 
           {editLoading ? (
             <div className="flex justify-center py-10">

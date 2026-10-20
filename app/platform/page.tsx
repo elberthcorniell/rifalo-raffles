@@ -317,10 +317,10 @@ export default async function PlatformLandingPage() {
             <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div className="max-w-xl space-y-2">
                 <h2 className="text-3xl font-bold text-[#111111]">
-                  Rifas que ya están en Rifalo
+                  Rifas verificadas
                 </h2>
                 <p className="text-muted-foreground">
-                  Organizaciones reales, con su propia página para vender boletos.
+                  Premios que revisamos y organizadores de confianza. Compra aquí o en su sitio.
                 </p>
               </div>
               {catalog.length > 0 && (
@@ -336,9 +336,9 @@ export default async function PlatformLandingPage() {
               <CatalogGrid raffles={catalog} />
             ) : (
               <div className="rounded-2xl border bg-card px-6 py-12 text-center space-y-3">
-                <p className="font-semibold text-[#111111]">Todavía no hay rifas públicas</p>
+                <p className="font-semibold text-[#111111]">Todavía no hay rifas verificadas</p>
                 <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                  Sé de los primeros en publicar la tuya.
+                  Cuando un organizador solicite verificación y la aprobemos, aparecerá aquí.
                 </p>
                 <Button className="bg-[#FFD000] text-black hover:bg-[#F0C400]" asChild>
                   <Link href="/signup">Crear mi rifa gratis</Link>

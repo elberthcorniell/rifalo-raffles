@@ -1,4 +1,3 @@
-import { getTenantUrl } from '@/lib/constants'
 import { createAdminClient, hasSupabaseConfig } from '@/lib/supabase/admin'
 import { getPublicImageUrl } from '@/lib/raffles'
 import type { RaffleStatus } from '@/types/raffle'
@@ -14,6 +13,7 @@ export type CatalogRaffle = {
   orgName: string
   orgSlug: string
   href: string
+  verified: boolean
 }
 
 type CatalogRow = {
@@ -31,6 +31,7 @@ type OrgRow = {
   slug: string
 }
 
+/** Active raffles approved for the platform verified catalog. */
 export async function fetchCatalogRaffles(limit = 48): Promise<CatalogRaffle[]> {
   if (!hasSupabaseConfig()) return []
 
@@ -38,12 +39,13 @@ export async function fetchCatalogRaffles(limit = 48): Promise<CatalogRaffle[]> 
   const { data, error } = await supabase
     .from('raffles')
     .select('id, title, image_path, ticket_price, status, org_id')
-    .in('status', ['active', 'ended', 'cancelled'])
-    .order('created_at', { ascending: false })
+    .eq('status', 'active')
+    .eq('verification_status', 'verified')
+    .order('verification_reviewed_at', { ascending: false })
     .limit(limit)
 
   if (error || !data) {
-    console.error('Error fetching raffle catalog:', error.message)
+    console.error('Error fetching raffle catalog:', error?.message)
     return []
   }
 
@@ -98,7 +100,8 @@ export async function fetchCatalogRaffles(limit = 48): Promise<CatalogRaffle[]> 
         status: row.status,
         orgName: org.name,
         orgSlug: org.slug,
-        href: getTenantUrl(org.slug, `/raffles/${row.id}`),
+        href: `/explore/${row.id}`,
+        verified: true,
       },
     ]
   })

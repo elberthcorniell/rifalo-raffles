@@ -1,3 +1,4 @@
+import { ShieldCheck } from 'lucide-react'
 import type { CatalogRaffle } from '@/lib/raffle-catalog'
 import type { RaffleStatus } from '@/types/raffle'
 
@@ -28,9 +29,17 @@ export function CatalogGrid({ raffles }: { raffles: CatalogRaffle[] }) {
                 alt={raffle.title}
                 className="h-full w-full object-cover"
               />
-              <span className="absolute left-3 top-3 rounded-full bg-[#FFD000] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black">
-                {STATUS_LABEL[raffle.status]}
-              </span>
+              <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
+                {raffle.verified && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[#FFD000] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black">
+                    <ShieldCheck className="h-3 w-3" />
+                    Verificada
+                  </span>
+                )}
+                <span className="rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                  {STATUS_LABEL[raffle.status]}
+                </span>
+              </div>
             </div>
             <div className="space-y-2 p-4">
               <p className="text-xs font-medium text-neutral-500">{raffle.orgName}</p>

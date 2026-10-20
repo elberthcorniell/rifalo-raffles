@@ -4,6 +4,23 @@ import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   Table,
   TableBody,
@@ -12,7 +29,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Loader2, ShieldCheck } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
+import type { RaffleVerificationStatus } from '@/types/raffle'
 
 const PAGE_SIZE = 25
 
@@ -21,6 +40,13 @@ const statusLabel: Record<string, string> = {
   active: 'Activa',
   ended: 'Finalizada',
   cancelled: 'Cancelada',
+}
+
+const verificationLabel: Record<RaffleVerificationStatus, string> = {
+  none: 'Sin solicitar',
+  pending: 'Pendiente',
+  verified: 'Verificada',
+  rejected: 'Rechazada',
 }
 
 interface SuperadminRaffle {
@@ -32,6 +58,10 @@ interface SuperadminRaffle {
   totalTickets: number
   soldTickets: number
   createdAt: string
+  verificationStatus: RaffleVerificationStatus
+  verificationRequestedAt: string | null
+  verificationReviewedAt: string | null
+  verificationNote: string | null
   org: { id: string; name: string; slug: string; url: string } | null
 }
 
@@ -61,12 +91,18 @@ function TicketsCell({ sold, total }: { sold: number; total: number }) {
 }
 
 export default function SuperadminRafflesPage() {
+  const { toast } = useToast()
   const [raffles, setRaffles] = useState<SuperadminRaffle[]>([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
+  const [verificationFilter, setVerificationFilter] = useState<string>('pending')
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
+  const [actingId, setActingId] = useState<string | null>(null)
+  const [rejectOpen, setRejectOpen] = useState(false)
+  const [rejectTarget, setRejectTarget] = useState<SuperadminRaffle | null>(null)
+  const [rejectNote, setRejectNote] = useState('')
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -83,6 +119,9 @@ export default function SuperadminRafflesPage() {
       pageSize: String(PAGE_SIZE),
     })
     if (debouncedQuery) params.set('q', debouncedQuery)
+    if (verificationFilter && verificationFilter !== 'all') {
+      params.set('verification', verificationFilter)
+    }
     const res = await fetch(`/api/platform/superadmin/raffles?${params}`)
     const json = await res.json()
     if (json.success) {
@@ -90,7 +129,7 @@ export default function SuperadminRafflesPage() {
       setTotal(json.total ?? json.data.length)
     }
     setLoading(false)
-  }, [page, debouncedQuery])
+  }, [page, debouncedQuery, verificationFilter])
 
   useEffect(() => {
     load()
@@ -98,21 +137,115 @@ export default function SuperadminRafflesPage() {
 
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
+  const approve = async (raffle: SuperadminRaffle) => {
+    setActingId(raffle.id)
+    try {
+      const res = await fetch(`/api/platform/superadmin/raffles/${raffle.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'approve' }),
+      })
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error)
+      toast({ title: 'Rifa verificada', description: raffle.title })
+      await load()
+    } catch (err: any) {
+      toast({
+        title: 'Error',
+        description: err.message || 'No se pudo aprobar',
+        variant: 'destructive',
+      })
+    } finally {
+      setActingId(null)
+    }
+  }
+
+  const openReject = (raffle: SuperadminRaffle) => {
+    setRejectTarget(raffle)
+    setRejectNote('')
+    setRejectOpen(true)
+  }
+
+  const submitReject = async () => {
+    if (!rejectTarget) return
+    setActingId(rejectTarget.id)
+    try {
+      const res = await fetch(`/api/platform/superadmin/raffles/${rejectTarget.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reject', note: rejectNote }),
+      })
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error)
+      toast({ title: 'Solicitud rechazada', description: rejectTarget.title })
+      setRejectOpen(false)
+      setRejectTarget(null)
+      await load()
+    } catch (err: any) {
+      toast({
+        title: 'Error',
+        description: err.message || 'No se pudo rechazar',
+        variant: 'destructive',
+      })
+    } finally {
+      setActingId(null)
+    }
+  }
+
+  const actionsFor = (r: SuperadminRaffle) => {
+    if (r.verificationStatus !== 'pending') return null
+    const busy = actingId === r.id
+    return (
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" disabled={busy} onClick={() => approve(r)}>
+          {busy ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-1" />}
+          Aprobar
+        </Button>
+        <Button size="sm" variant="outline" disabled={busy} onClick={() => openReject(r)}>
+          Rechazar
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-[#0B2447]">Rifas</h1>
-          <p className="text-muted-foreground">
-            {loading ? 'Cargando...' : `${total} rifa${total === 1 ? '' : 's'}`}
-          </p>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-[#0B2447]">Rifas</h1>
+            <p className="text-muted-foreground">
+              {loading ? 'Cargando...' : `${total} rifa${total === 1 ? '' : 's'}`}
+            </p>
+          </div>
+          <Input
+            placeholder="Buscar por título u organización"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="sm:max-w-xs bg-white"
+          />
         </div>
-        <Input
-          placeholder="Buscar por título u organización"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="sm:max-w-xs bg-white"
-        />
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+          <Label className="text-sm text-muted-foreground shrink-0">Verificación</Label>
+          <Select
+            value={verificationFilter}
+            onValueChange={(v) => {
+              setVerificationFilter(v)
+              setPage(1)
+            }}
+          >
+            <SelectTrigger className="sm:max-w-xs bg-white">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="pending">Pendientes</SelectItem>
+              <SelectItem value="verified">Verificadas</SelectItem>
+              <SelectItem value="rejected">Rechazadas</SelectItem>
+              <SelectItem value="none">Sin solicitar</SelectItem>
+              <SelectItem value="all">Todas</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="space-y-3 md:hidden">
@@ -134,9 +267,17 @@ export default function SuperadminRafflesPage() {
               <p className="text-sm text-muted-foreground">
                 {r.org ? `${r.org.name} · ${r.org.slug}` : 'Sin organización'}
               </p>
+              <Badge
+                variant={r.verificationStatus === 'verified' ? 'default' : 'outline'}
+                className="gap-1"
+              >
+                {r.verificationStatus === 'verified' && <ShieldCheck className="h-3 w-3" />}
+                {verificationLabel[r.verificationStatus] || r.verificationStatus}
+              </Badge>
               <p className="text-sm">RD$ {r.ticketPrice.toLocaleString('es-DO')}</p>
               <TicketsCell sold={r.soldTickets} total={r.totalTickets} />
               <p className="text-xs text-muted-foreground">{formatDate(r.createdAt)}</p>
+              {actionsFor(r)}
             </article>
           ))}
       </div>
@@ -148,22 +289,24 @@ export default function SuperadminRafflesPage() {
               <TableHead>Rifa</TableHead>
               <TableHead>Organización</TableHead>
               <TableHead>Estado</TableHead>
+              <TableHead>Verificación</TableHead>
               <TableHead>Precio</TableHead>
               <TableHead>Boletos</TableHead>
               <TableHead>Creada</TableHead>
+              <TableHead></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   Cargando...
                 </TableCell>
               </TableRow>
             )}
             {!loading && raffles.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   No hay rifas.
                 </TableCell>
               </TableRow>
@@ -199,11 +342,26 @@ export default function SuperadminRafflesPage() {
                       {statusLabel[r.status] || r.status}
                     </Badge>
                   </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={r.verificationStatus === 'verified' ? 'default' : 'outline'}
+                      className="gap-1"
+                    >
+                      {r.verificationStatus === 'verified' && <ShieldCheck className="h-3 w-3" />}
+                      {verificationLabel[r.verificationStatus] || r.verificationStatus}
+                    </Badge>
+                    {r.verificationNote && (
+                      <p className="mt-1 text-xs text-muted-foreground max-w-[12rem]">
+                        {r.verificationNote}
+                      </p>
+                    )}
+                  </TableCell>
                   <TableCell>RD$ {r.ticketPrice.toLocaleString('es-DO')}</TableCell>
                   <TableCell>
                     <TicketsCell sold={r.soldTickets} total={r.totalTickets} />
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-sm">{formatDate(r.createdAt)}</TableCell>
+                  <TableCell>{actionsFor(r)}</TableCell>
                 </TableRow>
               ))}
           </TableBody>
@@ -237,6 +395,42 @@ export default function SuperadminRafflesPage() {
           </div>
         </div>
       )}
+
+      <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rechazar verificación</DialogTitle>
+            <DialogDescription>
+              {rejectTarget
+                ? `Motivo para «${rejectTarget.title}». El organizador lo verá en su panel.`
+                : 'Escribe el motivo del rechazo.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Motivo</Label>
+            <Textarea
+              value={rejectNote}
+              onChange={(e) => setRejectNote(e.target.value)}
+              rows={3}
+              placeholder="Ej. No pudimos confirmar que el premio exista o se pueda entregar."
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              disabled={actingId === rejectTarget?.id || rejectNote.trim().length < 3}
+              onClick={submitReject}
+            >
+              {actingId === rejectTarget?.id && (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              )}
+              Rechazar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
