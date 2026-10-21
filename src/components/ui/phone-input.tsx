@@ -1,6 +1,7 @@
 'use client'
 
 import { PhoneInput as ReactInternationalPhoneInput } from 'react-international-phone'
+import 'react-international-phone/style.css'
 import type { PhoneInputProps as ReactInternationalPhoneInputProps } from 'react-international-phone'
 import { cn } from '@/lib/utils'
 

@@ -5,8 +5,6 @@ import { Providers } from "./providers";
 import { ClientProviders } from "./client-providers";
 import "./globals.css";
 
-import "react-international-phone/style.css";
-
 import { PLATFORM, getPlatformUrl } from "@/lib/constants";
 import { getOrgFromHeaders, getOrgBrand } from "@/lib/tenant";
 import { PATHNAME_HEADER } from "@/lib/tenant-host";
