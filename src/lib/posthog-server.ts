@@ -1,38 +1,53 @@
 import { SeverityNumber } from '@opentelemetry/api-logs'
 import { PostHog } from 'posthog-node'
+import { headers } from 'next/headers'
 import { emitPostHogLog, flushPostHogLogs } from '@/instrumentation'
+import {
+  isLocalHostname,
+  postHogDevCredentials,
+  postHogProductionCredentials,
+} from '@/lib/posthog-env'
 
 let posthog: PostHog | null | undefined
+let devPosthog: PostHog | null | undefined
 
-function getPostHog() {
-  if (posthog !== undefined) return posthog
-
-  const projectToken = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN
-  const host = process.env.NEXT_PUBLIC_POSTHOG_HOST
-
-  if (!projectToken || !host) {
-    if (process.env.NODE_ENV === 'development') {
-      const missingVariable = projectToken
-        ? 'NEXT_PUBLIC_POSTHOG_HOST'
-        : 'NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN'
-
-      throw new Error(
-        `${missingVariable} variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once ${missingVariable} is configured`
-      )
-    }
-
-    posthog = null
-    return posthog
-  }
-
-  posthog = new PostHog(projectToken, {
+function createClient(token: string, host: string) {
+  return new PostHog(token, {
     host,
     flushAt: 1,
     flushInterval: 0,
     enableExceptionAutocapture: true,
   })
+}
 
+function getPostHog() {
+  if (posthog !== undefined) return posthog
+
+  const credentials = postHogProductionCredentials()
+  if (!credentials) {
+    posthog = null
+    return posthog
+  }
+
+  posthog = createClient(credentials.token, credentials.host)
   return posthog
+}
+
+function getDevPostHog() {
+  if (devPosthog !== undefined) return devPosthog
+  const credentials = postHogDevCredentials()
+  devPosthog = credentials ? createClient(credentials.token, credentials.host) : null
+  return devPosthog
+}
+
+async function isLocalRequest() {
+  try {
+    const headerList = await headers()
+    const host = headerList.get('x-forwarded-host') || headerList.get('host') || ''
+    return isLocalHostname(host.split(',')[0] || '')
+  } catch {
+    return process.env.NODE_ENV === 'development'
+  }
 }
 
 export async function captureServerEvent(
@@ -40,7 +55,7 @@ export async function captureServerEvent(
   event: string,
   properties: Record<string, string | number | boolean>
 ) {
-  const client = getPostHog()
+  const client = (await isLocalRequest()) ? getDevPostHog() : getPostHog()
   if (!client) return
 
   try {

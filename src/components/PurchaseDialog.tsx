@@ -56,6 +56,8 @@ import {
 } from "@/types/org";
 import type { TicketBundle } from "@/types/raffle";
 import { maxTicketsPerPurchase, priceForQuantity } from "@/lib/ticket-bundles";
+import { captureClientEvent, safeErrorMessage } from "@/lib/explore-analytics";
+import { readStoredReferralCode } from "@/lib/referral-code";
 import { cn } from "@/lib/utils";
 
 interface BankAccount {
@@ -90,6 +92,11 @@ interface PurchaseDialogProps {
    * Pass `null` to stay on the current page. Defaults to `/verify-tickets`.
    */
   afterPurchaseHref?: string | null;
+  /** Set on the public explore checkout so purchase steps are tracked there. */
+  exploreAnalytics?: {
+    organizationId: string;
+    currency: string;
+  };
 }
 
 const BUNDLE_ICONS = [Flag, Rocket, Trophy, Crown, Zap];
@@ -170,6 +177,7 @@ export default function PurchaseDialog({
   purchaseUrl = "/api/purchases/voucher",
   checkoutFieldsOverride,
   afterPurchaseHref,
+  exploreAnalytics,
 }: PurchaseDialogProps) {
   const effectiveMin = Math.max(
     1,
@@ -183,6 +191,7 @@ export default function PurchaseDialog({
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [customQuantity, setCustomQuantity] = useState(false);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
   const { toast } = useToast();
   const router = useRouter();
   const { org } = useOrg();
@@ -246,6 +255,61 @@ export default function PurchaseDialog({
   const activeBundle =
     visibleBundles.find((bundle) => bundle.quantity === ticketQuantity) ?? null;
   const totalPrice = priceForQuantity(ticketQuantity, ticketPrice, visibleBundles);
+  const buyerFormStarted = useRef(false);
+  const buyerFormCompleted = useRef(false);
+  const lastTrackedQuantity = useRef<number | null>(null);
+  const lastTrackedPayment = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setReferralCode(readStoredReferralCode(raffleId));
+  }, [open, raffleId]);
+
+  useEffect(() => {
+    if (open) return;
+    buyerFormStarted.current = false;
+    buyerFormCompleted.current = false;
+    lastTrackedQuantity.current = null;
+    lastTrackedPayment.current = null;
+  }, [open]);
+
+  const trackPurchaseError = (step: string, errorMessage: unknown) => {
+    if (!exploreAnalytics) return;
+    captureClientEvent("purchase_error", {
+      raffle_id: raffleId,
+      step,
+      error_message: safeErrorMessage(errorMessage),
+    });
+  };
+
+  const trackQuantity = (quantity: number) => {
+    if (!exploreAnalytics || lastTrackedQuantity.current === quantity) return;
+    lastTrackedQuantity.current = quantity;
+    captureClientEvent("ticket_quantity_selected", {
+      raffle_id: raffleId,
+      quantity,
+      total_amount: priceForQuantity(quantity, ticketPrice, visibleBundles),
+    });
+  };
+
+  const trackPayment = (account: BankAccount) => {
+    if (!exploreAnalytics) return;
+    const bank = account.bank || account.name;
+    if (!bank) return;
+    const key = `${account.id}:${bank}`;
+    if (lastTrackedPayment.current === key) return;
+    lastTrackedPayment.current = key;
+    captureClientEvent("payment_method_selected", {
+      raffle_id: raffleId,
+      bank,
+    });
+  };
+
+  const markBuyerFormStarted = () => {
+    if (!exploreAnalytics || buyerFormStarted.current) return;
+    buyerFormStarted.current = true;
+    captureClientEvent("buyer_form_started", { raffle_id: raffleId });
+  };
 
   useEffect(() => {
     if (quantityFocused.current) return;
@@ -273,11 +337,17 @@ export default function PurchaseDialog({
       const response = await fetch(accountsUrl);
       const result = await response.json();
       if (result.success && result.data.length > 0) {
+        const first = result.data[0] as BankAccount;
         setAccounts(result.data);
-        setValue("accountId", result.data[0].id);
+        setValue("accountId", first.id);
+        trackPayment(first);
       }
     } catch (error) {
       console.error("Error fetching accounts:", error);
+      trackPurchaseError(
+        "payment_method",
+        "No se pudieron cargar las cuentas bancarias",
+      );
       toast({
         title: "Error",
         description: "No se pudieron cargar las cuentas bancarias",
@@ -298,12 +368,14 @@ export default function PurchaseDialog({
     const next = clampQuantity(Number.isFinite(parsed) ? parsed : ticketQuantity);
     setValue("ticketQuantity", next);
     setQuantityText(String(next));
+    trackQuantity(next);
   };
 
   const handleQuantityChange = (delta: number) => {
     const next = clampQuantity(ticketQuantity + delta);
     setValue("ticketQuantity", next);
     setQuantityText(String(next));
+    trackQuantity(next);
   };
 
   const handleQuantityInput = (raw: string) => {
@@ -316,18 +388,38 @@ export default function PurchaseDialog({
     if (quantityCeiling > 0 && parsed > quantityCeiling) {
       setValue("ticketQuantity", quantityCeiling);
       setQuantityText(String(quantityCeiling));
+      trackQuantity(quantityCeiling);
       return;
     }
     setQuantityText(digits);
     if (parsed >= 1 && parsed <= quantityCeiling) {
       setValue("ticketQuantity", parsed);
+      trackQuantity(parsed);
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setValue("voucher", file, { shouldValidate: true });
+    if (!file) return;
+    if (file.size > VOUCHER_MAX_BYTES) {
+      trackPurchaseError("voucher_upload", "El archivo no debe exceder 10MB");
+      e.target.value = "";
+      return;
+    }
+    if (!VOUCHER_TYPES.includes(file.type)) {
+      trackPurchaseError(
+        "voucher_upload",
+        "Formato inválido. Solo JPG, PNG, WEBP o PDF",
+      );
+      e.target.value = "";
+      return;
+    }
+    setValue("voucher", file, { shouldValidate: true });
+    if (exploreAnalytics) {
+      captureClientEvent("voucher_uploaded", {
+        raffle_id: raffleId,
+        file_type: file.type || "unknown",
+      });
     }
   };
 
@@ -341,7 +433,18 @@ export default function PurchaseDialog({
             : `El mínimo de boletos es ${quantityFloor}`,
         variant: "destructive",
       });
+      trackPurchaseError(
+        "ticket_quantity",
+        data.ticketQuantity > quantityCeiling
+          ? `El máximo por compra es ${quantityCeiling} boletos`
+          : `El mínimo de boletos es ${quantityFloor}`,
+      );
       return;
+    }
+
+    if (exploreAnalytics && !buyerFormCompleted.current) {
+      buyerFormCompleted.current = true;
+      captureClientEvent("buyer_form_completed", { raffle_id: raffleId });
     }
 
     try {
@@ -360,6 +463,10 @@ export default function PurchaseDialog({
       if (checkoutFields.email && data.email?.trim()) {
         formData.append("email", data.email.trim());
       }
+      const activeReferral = referralCode || readStoredReferralCode(raffleId);
+      if (activeReferral) {
+        formData.append("referralCode", activeReferral);
+      }
 
       const response = await fetch(purchaseUrl, {
         method: "POST",
@@ -369,11 +476,30 @@ export default function PurchaseDialog({
       const result = await response.json();
 
       if (result.success) {
+        if (exploreAnalytics && result.data?.purchaseId) {
+          captureClientEvent(
+            "voucher_purchase_submitted",
+            {
+              purchase_id: String(result.data.purchaseId),
+              raffle_id: raffleId,
+              organization_id: exploreAnalytics.organizationId,
+              ticket_quantity: Number(
+                result.data.ticketQuantity ?? data.ticketQuantity,
+              ),
+              total_amount: Number(result.data.totalAmount ?? totalPrice),
+              currency: exploreAnalytics.currency || "DOP",
+              via_platform: true,
+              source_page: "explore",
+            },
+            true,
+          );
+        }
         const whatsapp = data.whatsappNumber?.trim();
         toast({
           title: "¡Comprobante enviado!",
-          description:
-            "Tu comprobante ha sido recibido. Te notificaremos cuando sea verificado.",
+          description: result.data?.referralApplied
+            ? "Recibimos tu comprobante. Cuando se confirme, quien te refirió recibe sus boletos."
+            : "Tu comprobante ha sido recibido. Te notificaremos cuando sea verificado.",
         });
         reset({
           name: "",
@@ -400,16 +526,27 @@ export default function PurchaseDialog({
           }
         }
       } else {
+        const description =
+          result.code === "TICKET_QUOTA_EXCEEDED"
+            ? "Esta rifa no está aceptando compras en este momento. Intenta más tarde."
+            : result.error || "Error al enviar el comprobante";
+        const step =
+          typeof result.error === "string" &&
+          /subir el comprobante/i.test(result.error)
+            ? "voucher_upload"
+            : "submit";
+        trackPurchaseError(step, description);
         toast({
           title: "Error",
-          description:
-            result.code === "TICKET_QUOTA_EXCEEDED"
-              ? "Esta rifa no está aceptando compras en este momento. Intenta más tarde."
-              : result.error || "Error al enviar el comprobante",
+          description,
           variant: "destructive",
         });
       }
     } catch (error) {
+      trackPurchaseError(
+        "submit",
+        "Error al enviar el comprobante. Por favor intenta de nuevo.",
+      );
       toast({
         title: "Error",
         description:
@@ -438,12 +575,54 @@ export default function PurchaseDialog({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form
+            onSubmit={form.handleSubmit(onSubmit, (errors) => {
+              if (errors.voucher) {
+                trackPurchaseError(
+                  "voucher_upload",
+                  errors.voucher.message || "Sube el comprobante de transferencia",
+                );
+                return;
+              }
+              if (errors.accountId) {
+                trackPurchaseError(
+                  "payment_method",
+                  errors.accountId.message || "Selecciona una cuenta bancaria",
+                );
+                return;
+              }
+              if (errors.ticketQuantity) {
+                trackPurchaseError(
+                  "ticket_quantity",
+                  errors.ticketQuantity.message || "Cantidad inválida",
+                );
+                return;
+              }
+              trackPurchaseError(
+                "buyer_form",
+                errors.name?.message ||
+                  errors.email?.message ||
+                  errors.whatsappNumber?.message ||
+                  "Datos inválidos",
+              );
+            })}
+            className="space-y-6"
+          >
+            {referralCode && (
+              <p className="rounded-xl bg-white/10 px-3 py-2 text-sm text-white/90">
+                Esta compra cuenta para quien te refirió. Recibe sus boletos cuando el pago se
+                confirma.
+              </p>
+            )}
 
             {(checkoutFields.name ||
               checkoutFields.email ||
               checkoutFields.phone) && (
-              <div className="space-y-4 border-card-border">
+              <div
+                className="space-y-4 border-card-border"
+                onFocusCapture={markBuyerFormStarted}
+                onChange={markBuyerFormStarted}
+              >
                 {checkoutFields.name && (
                   <FormField
                     control={form.control}
@@ -538,6 +717,7 @@ export default function PurchaseDialog({
                         onClick={() => {
                           setCustomQuantity(false);
                           setValue("ticketQuantity", bundle.quantity);
+                          trackQuantity(bundle.quantity);
                         }}
                         className={cn(
                           "relative flex w-full items-center gap-3 rounded-2xl border bg-[#161616] px-3 py-3 text-left transition-shadow",
@@ -687,7 +867,13 @@ export default function PurchaseDialog({
                         <div className="space-y-3">
                           <Select
                             value={field.value}
-                            onValueChange={(value) => field.onChange(value)}
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              const account = accounts.find(
+                                (item) => item.id === value,
+                              );
+                              if (account) trackPayment(account);
+                            }}
                           >
                             <FormControl>
                               <SelectTrigger className="border-white/15 bg-[#1c1c1c] text-white">

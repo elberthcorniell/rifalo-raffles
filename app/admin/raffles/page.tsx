@@ -34,6 +34,7 @@ import type { Raffle, RaffleVerificationStatus, TicketBundle } from '@/types/raf
 import { Loader2, Plus, ShieldCheck } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import RaffleBundleFields from '@/components/admin/RaffleBundleFields'
+import RaffleReferralFields from '@/components/admin/RaffleReferralFields'
 import { parseBundleDrafts, type BundleDraft } from '@/lib/ticket-bundles'
 
 const statusLabel: Record<string, string> = {
@@ -67,6 +68,8 @@ const emptyCreate = {
   rangeStart: '1',
   rangeEnd: '100',
   bundles: [] as BundleDraft[],
+  referralEnabled: false,
+  referralRewardTickets: '1',
 }
 
 function formatRd(amount: number) {
@@ -136,12 +139,14 @@ export default function AdminRafflesPage() {
   const [editStatus, setEditStatus] = useState('draft')
   const [editImage, setEditImage] = useState<string | null>(null)
   const [ranges, setRanges] = useState<Range[]>([])
-  const [counts, setCounts] = useState({ total: 0, taken: 0, available: 0 })
+  const [counts, setCounts] = useState({ total: 0, taken: 0, available: 0, rewardTickets: 0 })
   const [editTotal, setEditTotal] = useState('0')
   const [newStart, setNewStart] = useState('')
   const [newEnd, setNewEnd] = useState('')
   const [addingRange, setAddingRange] = useState(false)
   const [editBundles, setEditBundles] = useState<BundleDraft[]>([])
+  const [editReferralEnabled, setEditReferralEnabled] = useState(false)
+  const [editReferralReward, setEditReferralReward] = useState('1')
   const [editVerificationStatus, setEditVerificationStatus] =
     useState<RaffleVerificationStatus>('none')
   const [requestingId, setRequestingId] = useState<string | null>(null)
@@ -202,6 +207,8 @@ export default function AdminRafflesPage() {
           rangeStart: parseInt(createForm.rangeStart, 10),
           rangeEnd: parseInt(createForm.rangeEnd, 10),
           bundles: parsedBundles.bundles,
+          referralEnabled: createForm.referralEnabled,
+          referralRewardTickets: parseInt(createForm.referralRewardTickets, 10) || 1,
         }),
       })
       const json = await res.json()
@@ -240,6 +247,8 @@ export default function AdminRafflesPage() {
       setEditFeatured(!!r.featured)
       setEditStatus(r.status || 'draft')
       setEditVerificationStatus(r.verificationStatus || 'none')
+      setEditReferralEnabled(r.referralEnabled === true)
+      setEditReferralReward(String(r.referralRewardTickets || 1))
       setEditImage(r.image || null)
       setRanges(json.data.ranges || [])
       const nextCounts = json.data.counts || { total: 0, taken: 0, available: 0 }
@@ -316,6 +325,8 @@ export default function AdminRafflesPage() {
           featured: editFeatured,
           status: editStatus,
           bundles: parsedBundles.bundles,
+          referralEnabled: editReferralEnabled,
+          referralRewardTickets: parseInt(editReferralReward, 10) || 1,
         }),
       })
       const json = await res.json()
@@ -515,6 +526,11 @@ export default function AdminRafflesPage() {
                       Destacada
                     </Badge>
                   )}
+                  {r.referralEnabled && (
+                    <Badge className="ml-2" variant="outline">
+                      Referidos · {r.referralRewardTickets || 1}
+                    </Badge>
+                  )}
                 </TableCell>
                 <TableCell>
                   <Badge variant={r.status === 'active' ? 'default' : 'outline'}>
@@ -687,6 +703,16 @@ export default function AdminRafflesPage() {
                 />
               </div>
             </div>
+            <RaffleReferralFields
+              enabled={createForm.referralEnabled}
+              rewardTickets={createForm.referralRewardTickets}
+              onEnabledChange={(referralEnabled) =>
+                setCreateForm({ ...createForm, referralEnabled })
+              }
+              onRewardChange={(referralRewardTickets) =>
+                setCreateForm({ ...createForm, referralRewardTickets })
+              }
+            />
             <IncomePreview
               price={parseFloat(createForm.ticketPrice)}
               total={ticketCountFromRange(createForm.rangeStart, createForm.rangeEnd)}
@@ -785,10 +811,16 @@ export default function AdminRafflesPage() {
                     : 'Al guardar se generan o eliminan boletos disponibles para llegar a este total.'}
                 </p>
               </div>
+              <RaffleReferralFields
+                enabled={editReferralEnabled}
+                rewardTickets={editReferralReward}
+                onEnabledChange={setEditReferralEnabled}
+                onRewardChange={setEditReferralReward}
+              />
               <IncomePreview
                 price={parseFloat(editTicketPrice)}
                 total={parseInt(editTotal, 10) || 0}
-                taken={counts.taken}
+                taken={Math.max(0, counts.taken - (counts.rewardTickets || 0))}
               />
               <div className="space-y-2">
                 <Label>Fecha de cierre</Label>

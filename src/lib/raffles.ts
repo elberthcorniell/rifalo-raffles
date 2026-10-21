@@ -315,6 +315,8 @@ export function mapRaffle(
     verificationNote: row.verification_note ?? null,
     verificationRequestedAt: row.verification_requested_at ?? null,
     verificationReviewedAt: row.verification_reviewed_at ?? null,
+    referralEnabled: row.referral_enabled === true,
+    referralRewardTickets: Math.max(1, Number(row.referral_reward_tickets) || 1),
   }
 }
 

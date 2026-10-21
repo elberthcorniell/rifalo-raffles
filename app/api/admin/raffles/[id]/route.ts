@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireOrgAdmin } from '@/lib/supabase/require-admin'
 import { getTicketCounts, listRaffleBundles, mapRaffle, replaceRaffleBundles, syncRaffleTicketTotal } from '@/lib/raffles'
 import { parseBundleInputs } from '@/lib/ticket-bundles'
+import { parseReferralRewardTickets } from '@/lib/referrals'
 import type { DbRaffle } from '@/types/raffle'
 import { captureServerEvent } from '@/lib/posthog-server'
 
@@ -41,17 +42,29 @@ export async function GET(
     .eq('raffle_id', id)
     .order('start_number', { ascending: true })
 
-  const [counts, bundles] = await Promise.all([
+  const [counts, bundles, rewardRows] = await Promise.all([
     getTicketCounts([id]),
     listRaffleBundles(admin, [id]),
+    admin
+      .from('purchases')
+      .select('quantity')
+      .eq('raffle_id', id)
+      .eq('org_id', org.id)
+      .eq('kind', 'referral_reward')
+      .in('status', ['pending', 'confirmed']),
   ])
+
+  const rewardTickets = (rewardRows.data || []).reduce(
+    (sum, row) => sum + (Number(row.quantity) || 0),
+    0
+  )
 
   return NextResponse.json({
     success: true,
     data: {
       raffle: mapRaffle(raffle as DbRaffle, counts[id]),
       ranges: ranges || [],
-      counts: counts[id],
+      counts: { ...counts[id], rewardTickets },
       bundles: bundles[id] || [],
     },
   })
@@ -86,6 +99,17 @@ export async function PATCH(
   if (body.featured != null) updates.featured = Boolean(body.featured)
   if (body.status != null) updates.status = body.status
   if (body.imagePath !== undefined) updates.image_path = body.imagePath || null
+  if (body.referralEnabled != null) updates.referral_enabled = Boolean(body.referralEnabled)
+  if (body.referralRewardTickets != null) {
+    const parsedReferralTickets = parseReferralRewardTickets(body.referralRewardTickets)
+    if (typeof parsedReferralTickets !== 'number') {
+      return NextResponse.json(
+        { success: false, error: parsedReferralTickets.error },
+        { status: 400 }
+      )
+    }
+    updates.referral_reward_tickets = parsedReferralTickets
+  }
 
   const { user, admin, org } = auth
 

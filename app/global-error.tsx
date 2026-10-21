@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import posthog from "posthog-js";
-import { isPostHogConfigured } from "./posthog-init";
 
 export default function GlobalError({
   error,
@@ -12,7 +11,7 @@ export default function GlobalError({
   reset: () => void;
 }>) {
   useEffect(() => {
-    if (isPostHogConfigured) {
+    if (posthog.__loaded) {
       posthog.captureException(error);
     }
   }, [error]);

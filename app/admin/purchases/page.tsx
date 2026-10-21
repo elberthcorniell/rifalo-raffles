@@ -29,30 +29,34 @@ import { useToast } from '@/hooks/use-toast'
 interface PurchaseRow {
   id: string
   status: string
+  kind?: 'paid' | 'referral_reward'
   quantity: number
   totalAmount: number
   submittedAt: string
   customer: { name: string | null; whatsapp: string | null; email?: string | null } | null
   raffle: { title: string } | null
   ticketNumbers: string[]
+  referrerPhone?: string | null
 }
 
 interface PurchaseDetail {
   id: string
   status: string
+  kind?: 'paid' | 'referral_reward'
   quantity: number
   totalAmount: number
   voucherUrl: string | null
   submittedAt: string
   notes: string | null
   customer: { name: string | null; whatsapp: string | null; email?: string | null } | null
-  raffle: { id: string; title: string } | null
+  raffle: { id: string; title: string; referralRewardTickets?: number } | null
   bankAccount: {
     bank: string
     account_number: string
     holder_name?: string
   } | null
   ticketNumbers: string[]
+  referrerPhone?: string | null
 }
 
 const tabs = [
@@ -181,6 +185,12 @@ function PurchasesContent() {
               <div>
                 <p className="font-medium">RD$ {p.totalAmount.toLocaleString('es-DO')}</p>
                 <p className="text-xs text-muted-foreground">{p.quantity} boletos</p>
+                {p.kind === 'referral_reward' && (
+                  <p className="text-xs font-medium text-emerald-700">Boletos por referido</p>
+                )}
+                {p.referrerPhone && (
+                  <p className="text-xs text-muted-foreground">Referido por {p.referrerPhone}</p>
+                )}
                 <p className="text-xs text-muted-foreground">
                   {new Date(p.submittedAt).toLocaleString('es-DO')}
                 </p>
@@ -232,6 +242,12 @@ function PurchasesContent() {
                 <TableCell>
                   RD$ {p.totalAmount.toLocaleString('es-DO')}
                   <div className="text-xs text-muted-foreground">{p.quantity} boletos</div>
+                  {p.kind === 'referral_reward' && (
+                    <div className="text-xs font-medium text-emerald-700">Boletos por referido</div>
+                  )}
+                  {p.referrerPhone && (
+                    <div className="text-xs text-muted-foreground">Referido por {p.referrerPhone}</div>
+                  )}
                 </TableCell>
                 <TableCell>
                   <Badge className={cn('border-0', statusBadge[p.status])}>{p.status}</Badge>
@@ -271,10 +287,26 @@ function PurchasesContent() {
                 <Badge className={cn('border-0', statusBadge[purchase.status])}>
                   {purchase.status}
                 </Badge>
+                {purchase.kind === 'referral_reward' && (
+                  <Badge variant="outline">Boletos por referido</Badge>
+                )}
                 <span className="text-sm text-muted-foreground">
                   {new Date(purchase.submittedAt).toLocaleString('es-DO')}
                 </span>
               </div>
+
+              {purchase.referrerPhone && purchase.status === 'pending' && (
+                <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+                  Esta compra llegó por un referido ({purchase.referrerPhone}). Al confirmar, esa
+                  persona recibe {purchase.raffle?.referralRewardTickets || 1} boletos.
+                </p>
+              )}
+              {purchase.kind === 'referral_reward' && (
+                <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+                  Estos boletos se otorgaron gratis porque alguien compró con el enlace de este
+                  cliente.
+                </p>
+              )}
 
               <div className="grid sm:grid-cols-2 gap-4 text-sm">
                 <div className="space-y-1 rounded-md bg-slate-50 p-3">
@@ -341,7 +373,11 @@ function PurchasesContent() {
                     </a>
                   )
                 ) : (
-                  <p className="text-sm text-muted-foreground">Sin comprobante</p>
+                  <p className="text-sm text-muted-foreground">
+                    {purchase.kind === 'referral_reward'
+                      ? 'Boletos de referido, sin comprobante'
+                      : 'Sin comprobante'}
+                  </p>
                 )}
               </div>
 

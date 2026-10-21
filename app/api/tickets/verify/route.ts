@@ -63,6 +63,7 @@ export async function POST(request: Request) {
         total_amount,
         status,
         submitted_at,
+        kind,
         raffle_id,
         raffles ( id, title, ticket_price ),
         tickets ( display_number, number, status )
@@ -86,6 +87,10 @@ export async function POST(request: Request) {
         .slice()
         .sort((a, b) => a.number - b.number)
         .map((t) => t.display_number)
+      const title =
+        p.kind === 'referral_reward'
+          ? `Boletos por referido · ${raffle?.title || 'Rifa'}`
+          : raffle?.title || 'Boletos de rifa'
 
       return {
         id: p.id,
@@ -95,12 +100,15 @@ export async function POST(request: Request) {
         currency: 'DOP',
         paid: p.status === 'confirmed' ? Number(p.total_amount) : 0,
         dueToPay: p.status === 'pending' ? Number(p.total_amount) : 0,
-        description: raffle?.title || 'Boletos de rifa',
+        description: title,
         elements: [
           {
-            description: raffle?.title || 'Boleto de rifa',
+            description: title,
             quantity: p.quantity,
-            price: Number(raffle?.ticket_price) || Number(p.total_amount) / p.quantity,
+            price:
+              p.kind === 'referral_reward'
+                ? 0
+                : Number(raffle?.ticket_price) || Number(p.total_amount) / Math.max(p.quantity, 1),
             resourceId: raffle?.id,
           },
         ],
