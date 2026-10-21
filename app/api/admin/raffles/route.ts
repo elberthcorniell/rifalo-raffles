@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireOrgAdmin } from '@/lib/supabase/require-admin'
 import { getTicketCounts, mapRaffle, replaceRaffleBundles } from '@/lib/raffles'
 import { parseBundleInputs } from '@/lib/ticket-bundles'
+import { parseReferralRewardTickets } from '@/lib/referrals'
 import type { DbRaffle } from '@/types/raffle'
 import { captureServerEvent } from '@/lib/posthog-server'
 
@@ -46,6 +47,8 @@ export async function POST(request: Request) {
     rangeStart,
     rangeEnd,
     bundles,
+    referralEnabled = false,
+    referralRewardTickets = 1,
   } = body
 
   if (!title || ticketPrice == null) {
@@ -61,6 +64,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: parsedBundles.error }, { status: 400 })
   }
 
+  const parsedReferralTickets = parseReferralRewardTickets(referralRewardTickets)
+  if (typeof parsedReferralTickets !== 'number') {
+    return NextResponse.json(
+      { success: false, error: parsedReferralTickets.error },
+      { status: 400 }
+    )
+  }
+
   const { data: raffle, error } = await admin
     .from('raffles')
     .insert({
@@ -73,6 +84,8 @@ export async function POST(request: Request) {
       featured: Boolean(featured),
       status,
       image_path: imagePath || null,
+      referral_enabled: Boolean(referralEnabled),
+      referral_reward_tickets: parsedReferralTickets,
     })
     .select('*')
     .single()

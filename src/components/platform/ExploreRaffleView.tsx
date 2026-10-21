@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import Link from 'next/link'
 import PurchaseButton from '@/components/PurchaseButton'
+import ReferralShare from '@/components/ReferralShare'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -198,6 +199,13 @@ export function ExploreRaffleView({
                     <Progress value={progressPercentage} className="h-3" />
                   </div>
                 </Card>
+
+                {raffle.referralEnabled && (
+                  <ReferralShare
+                    raffleId={raffle.id}
+                    rewardTickets={raffle.referralRewardTickets || 1}
+                  />
+                )}
 
                 <a
                   href={org.raffleUrl}

@@ -31,6 +31,8 @@ export interface Raffle {
   verificationNote?: string | null
   verificationRequestedAt?: string | null
   verificationReviewedAt?: string | null
+  referralEnabled?: boolean
+  referralRewardTickets?: number
 }
 
 export interface BankAccount {
@@ -62,6 +64,8 @@ export interface DbRaffle {
   verification_requested_at?: string | null
   verification_reviewed_at?: string | null
   verification_note?: string | null
+  referral_enabled?: boolean
+  referral_reward_tickets?: number
   created_at?: string
   updated_at?: string
 }

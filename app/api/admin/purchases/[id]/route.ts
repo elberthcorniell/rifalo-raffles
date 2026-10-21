@@ -19,9 +19,10 @@ export async function GET(
     .select(`
       *,
       customers ( id, name, whatsapp, email ),
-      raffles ( id, title, ticket_price ),
+      raffles ( id, title, ticket_price, referral_reward_tickets ),
       bank_accounts ( id, bank, account_number, holder_name, account_type ),
-      tickets ( display_number, number, status )
+      tickets ( display_number, number, status ),
+      referrals ( phone )
     `)
     .eq('id', id)
     .eq('org_id', org.id)
@@ -41,6 +42,8 @@ export async function GET(
     .slice()
     .sort((a, b) => a.number - b.number)
     .map((t) => t.display_number)
+  const referral = Array.isArray(p.referrals) ? p.referrals[0] : p.referrals
+  const kind = p.kind === 'referral_reward' ? 'referral_reward' : 'paid'
 
   let voucherUrl: string | null = null
   if (p.voucher_path) {
@@ -55,6 +58,7 @@ export async function GET(
     data: {
       id: p.id,
       status: p.status,
+      kind,
       quantity: p.quantity,
       totalAmount: Number(p.total_amount),
       voucherPath: p.voucher_path,
@@ -63,9 +67,16 @@ export async function GET(
       reviewedAt: p.reviewed_at,
       notes: p.notes,
       customer,
-      raffle,
+      raffle: raffle
+        ? {
+            id: raffle.id,
+            title: raffle.title,
+            referralRewardTickets: Number(raffle.referral_reward_tickets) || 1,
+          }
+        : null,
       bankAccount: bank,
       ticketNumbers,
+      referrerPhone: kind === 'paid' ? referral?.phone || null : null,
     },
   })
 }

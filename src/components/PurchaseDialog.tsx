@@ -57,6 +57,7 @@ import {
 import type { TicketBundle } from "@/types/raffle";
 import { maxTicketsPerPurchase, priceForQuantity } from "@/lib/ticket-bundles";
 import { captureClientEvent, safeErrorMessage } from "@/lib/explore-analytics";
+import { readStoredReferralCode } from "@/lib/referral-code";
 import { cn } from "@/lib/utils";
 
 interface BankAccount {
@@ -190,6 +191,7 @@ export default function PurchaseDialog({
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [customQuantity, setCustomQuantity] = useState(false);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
   const { toast } = useToast();
   const router = useRouter();
   const { org } = useOrg();
@@ -257,6 +259,11 @@ export default function PurchaseDialog({
   const buyerFormCompleted = useRef(false);
   const lastTrackedQuantity = useRef<number | null>(null);
   const lastTrackedPayment = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setReferralCode(readStoredReferralCode(raffleId));
+  }, [open, raffleId]);
 
   useEffect(() => {
     if (open) return;
@@ -456,6 +463,10 @@ export default function PurchaseDialog({
       if (checkoutFields.email && data.email?.trim()) {
         formData.append("email", data.email.trim());
       }
+      const activeReferral = referralCode || readStoredReferralCode(raffleId);
+      if (activeReferral) {
+        formData.append("referralCode", activeReferral);
+      }
 
       const response = await fetch(purchaseUrl, {
         method: "POST",
@@ -486,8 +497,9 @@ export default function PurchaseDialog({
         const whatsapp = data.whatsappNumber?.trim();
         toast({
           title: "¡Comprobante enviado!",
-          description:
-            "Tu comprobante ha sido recibido. Te notificaremos cuando sea verificado.",
+          description: result.data?.referralApplied
+            ? "Recibimos tu comprobante. Cuando se confirme, quien te refirió recibe sus boletos."
+            : "Tu comprobante ha sido recibido. Te notificaremos cuando sea verificado.",
         });
         reset({
           name: "",
@@ -596,6 +608,12 @@ export default function PurchaseDialog({
             })}
             className="space-y-6"
           >
+            {referralCode && (
+              <p className="rounded-xl bg-white/10 px-3 py-2 text-sm text-white/90">
+                Esta compra cuenta para quien te refirió. Recibe sus boletos cuando el pago se
+                confirma.
+              </p>
+            )}
 
             {(checkoutFields.name ||
               checkoutFields.email ||

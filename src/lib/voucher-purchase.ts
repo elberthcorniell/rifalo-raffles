@@ -6,13 +6,11 @@ import { normalizeCheckoutFields } from '@/types/org'
 import type { Organization } from '@/types/org'
 import { captureServerEvent } from '@/lib/posthog-server'
 import { maxTicketsPerPurchase, moneyEquals, priceForQuantity } from '@/lib/ticket-bundles'
+import { normalizePhone } from '@/lib/phone'
+import { findReferralForPurchase } from '@/lib/referrals'
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-
-function normalizeWhatsapp(phone: string): string {
-  return phone.trim().replace(/[^\d+]/g, '')
-}
 
 export type VoucherPurchaseOptions = {
   org: Organization
@@ -41,6 +39,7 @@ export async function processVoucherPurchase({
   const email = formData.get('email') as string | null
   const whatsappNumber = formData.get('whatsappNumber')
   const accountId = formData.get('accountId') as string
+  const referralCode = formData.get('referralCode')
 
   if (!voucher || !raffleId || !ticketQuantity || !totalAmount || !accountId) {
     return NextResponse.json(
@@ -249,7 +248,7 @@ export async function processVoucherPurchase({
 
   const whatsapp =
     checkoutFields.phone && typeof whatsappNumber === 'string'
-      ? normalizeWhatsapp(whatsappNumber)
+      ? normalizePhone(whatsappNumber)
       : null
   const customerName =
     checkoutFields.name && typeof name === 'string' ? name.trim() : null
@@ -301,6 +300,13 @@ export async function processVoucherPurchase({
     customerId = newCustomer.id
   }
 
+  const referralId = await findReferralForPurchase(supabase, {
+    orgId: org.id,
+    raffleId,
+    code: typeof referralCode === 'string' ? referralCode : null,
+    buyerPhone: whatsapp,
+  })
+
   const ext = voucher.name.split('.').pop() || 'bin'
   const voucherPath = `${org.id}/${raffleId}/${Date.now()}_${crypto.randomUUID()}.${ext}`
   const arrayBuffer = await voucher.arrayBuffer()
@@ -332,6 +338,7 @@ export async function processVoucherPurchase({
       total_amount: expectedTotal,
       status: 'pending',
       voucher_path: voucherPath,
+      ...(referralId ? { referral_id: referralId } : {}),
     })
     .select('id, submitted_at')
     .single()
@@ -395,6 +402,7 @@ export async function processVoucherPurchase({
     total_amount: expectedTotal,
     currency: 'DOP',
     via_platform: requireVerified,
+    referral_applied: Boolean(referralId),
   })
 
   if (customerEmail) {
@@ -425,6 +433,7 @@ export async function processVoucherPurchase({
       whatsappNumber: whatsapp,
       status: 'pending_verification',
       submittedAt: purchase.submitted_at || new Date().toISOString(),
+      referralApplied: Boolean(referralId),
     },
   })
 }

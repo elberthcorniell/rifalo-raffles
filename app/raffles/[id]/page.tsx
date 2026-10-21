@@ -6,6 +6,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import PurchaseDialog from "@/components/PurchaseDialog";
 import PurchaseButton from "@/components/PurchaseButton";
+import ReferralShare from "@/components/ReferralShare";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -197,6 +198,13 @@ export default function RaffleDetailPage() {
                     </div>
                   </div>
                 </Card>
+
+                {raffle.referralEnabled && (
+                  <ReferralShare
+                    raffleId={raffle.id}
+                    rewardTickets={raffle.referralRewardTickets || 1}
+                  />
+                )}
               </div>
 
               {/* Right Column - Purchase Card */}

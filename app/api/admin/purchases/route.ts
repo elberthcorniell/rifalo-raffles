@@ -16,7 +16,8 @@ export async function GET(request: Request) {
       customers ( id, name, whatsapp, email ),
       raffles ( id, title, ticket_price ),
       bank_accounts ( id, bank, account_number, holder_name ),
-      tickets ( display_number, number, status )
+      tickets ( display_number, number, status ),
+      referrals ( phone )
     `)
     .eq('org_id', org.id)
     .order('submitted_at', { ascending: false })
@@ -39,10 +40,13 @@ export async function GET(request: Request) {
       .slice()
       .sort((a, b) => a.number - b.number)
       .map((t) => t.display_number)
+    const referral = Array.isArray(p.referrals) ? p.referrals[0] : p.referrals
+    const kind = p.kind === 'referral_reward' ? 'referral_reward' : 'paid'
 
     return {
       id: p.id,
       status: p.status,
+      kind,
       quantity: p.quantity,
       totalAmount: Number(p.total_amount),
       voucherPath: p.voucher_path,
@@ -53,6 +57,7 @@ export async function GET(request: Request) {
       raffle,
       bankAccount: bank,
       ticketNumbers: tickets,
+      referrerPhone: kind === 'paid' ? referral?.phone || null : null,
     }
   })
 
