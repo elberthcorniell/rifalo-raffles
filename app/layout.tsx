@@ -10,6 +10,8 @@ import { getOrgFromHeaders, getOrgBrand } from "@/lib/tenant";
 import { PATHNAME_HEADER } from "@/lib/tenant-host";
 import { getBrandCssVars, getThemeSurfaceCssVars } from "@/lib/colors";
 import { fontFamilyValue, googleFontsHref } from "@/lib/fonts";
+import { hostnameFromHeaderValue } from "@/lib/meta-host";
+import { resolveMetaPixelId } from "@/lib/meta-server";
 
 export async function generateMetadata(): Promise<Metadata> {
   const metadata: Metadata = {
@@ -55,9 +57,13 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headerList = await headers();
   const org = await getOrgFromHeaders();
   const brand = org ? getOrgBrand(org) : null;
-  const pathname = (await headers()).get(PATHNAME_HEADER) || "";
+  const pathname = headerList.get(PATHNAME_HEADER) || "";
+  const metaPixelId = resolveMetaPixelId(
+    hostnameFromHeaderValue(headerList.get("x-forwarded-host") || headerList.get("host")),
+  );
   const applyStorefront = !!brand && isStorefrontPath(pathname);
   const applyDark = applyStorefront && brand.theme === "dark";
   const brandStyle: CSSProperties | undefined = brand
@@ -89,9 +95,22 @@ export default async function RootLayout({
       )}
       <body>
         <Providers initialOrg={org} initialBrand={brand}>
-          <ClientProviders />
+          <ClientProviders metaPixelId={metaPixelId} />
           {children}
         </Providers>
+        {metaPixelId ? (
+          <noscript>
+            {/* Meta requires this tracking pixel to be a plain image request. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              height={1}
+              width={1}
+              alt=""
+              style={{ display: "none" }}
+              src={`https://www.facebook.com/tr?id=${metaPixelId}&ev=PageView&noscript=1`}
+            />
+          </noscript>
+        ) : null}
       </body>
     </html>
   );

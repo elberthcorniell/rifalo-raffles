@@ -5,6 +5,13 @@ import { getOrgBrand } from '@/lib/tenant'
 import { normalizeCheckoutFields } from '@/types/org'
 import type { Organization } from '@/types/org'
 import { captureServerEvent } from '@/lib/posthog-server'
+import {
+  isMissingMetaColumn,
+  readPurchaseMeta,
+  scheduleMetaCapiEvent,
+  type MetaCapiEvent,
+} from '@/lib/meta-server'
+import type { PurchaseMetaRecord } from '@/lib/meta-host'
 import { maxTicketsPerPurchase, moneyEquals, priceForQuantity } from '@/lib/ticket-bundles'
 import { normalizePhone } from '@/lib/phone'
 import { findReferralForPurchase } from '@/lib/referrals'
@@ -327,21 +334,53 @@ export async function processVoucherPurchase({
     )
   }
 
-  const { data: purchase, error: purchaseError } = await supabase
+  let purchaseMeta: PurchaseMetaRecord | null = null
+  try {
+    purchaseMeta = await readPurchaseMeta(formData)
+  } catch (error) {
+    console.error(
+      'Meta attribution skipped:',
+      error instanceof Error ? error.message : 'unknown'
+    )
+  }
+
+  const insertRow = {
+    org_id: org.id,
+    customer_id: customerId,
+    raffle_id: raffleId,
+    bank_account_id: accountId,
+    quantity: parsedTicketQuantity,
+    total_amount: expectedTotal,
+    status: 'pending',
+    voucher_path: voucherPath,
+    ...(referralId ? { referral_id: referralId } : {}),
+  }
+  const metaColumns = purchaseMeta
+    ? {
+        meta_fbp: purchaseMeta.meta_fbp,
+        meta_fbc: purchaseMeta.meta_fbc,
+        meta_client_ip: purchaseMeta.meta_client_ip,
+        meta_client_user_agent: purchaseMeta.meta_client_user_agent,
+        meta_event_source_url: purchaseMeta.meta_event_source_url,
+      }
+    : null
+
+  let { data: purchase, error: purchaseError } = await supabase
     .from('purchases')
-    .insert({
-      org_id: org.id,
-      customer_id: customerId,
-      raffle_id: raffleId,
-      bank_account_id: accountId,
-      quantity: parsedTicketQuantity,
-      total_amount: expectedTotal,
-      status: 'pending',
-      voucher_path: voucherPath,
-      ...(referralId ? { referral_id: referralId } : {}),
-    })
+    .insert(metaColumns ? { ...insertRow, ...metaColumns } : insertRow)
     .select('id, submitted_at')
     .single()
+
+  if (purchaseError && metaColumns && isMissingMetaColumn(purchaseError)) {
+    console.error('Meta attribution columns are missing; saving the purchase without them')
+    const retry = await supabase
+      .from('purchases')
+      .insert(insertRow)
+      .select('id, submitted_at')
+      .single()
+    purchase = retry.data
+    purchaseError = retry.error
+  }
 
   if (purchaseError) {
     await supabase.storage.from('vouchers').remove([voucherPath])
@@ -393,6 +432,38 @@ export async function processVoucherPurchase({
   }).catch((error) => {
     console.error('Failed to send purchase notification email:', error)
   })
+
+  if (purchaseMeta) {
+    const addPaymentInfo: MetaCapiEvent = {
+      eventName: 'AddPaymentInfo',
+      eventId: purchaseMeta.eventId,
+      eventSourceUrl: purchaseMeta.meta_event_source_url,
+      clientIpAddress: purchaseMeta.meta_client_ip,
+      clientUserAgent: purchaseMeta.meta_client_user_agent,
+      fbp: purchaseMeta.meta_fbp,
+      fbc: purchaseMeta.meta_fbc,
+      user: {
+        email: customerEmail,
+        phone: whatsapp,
+        name: customerName,
+      },
+      customData: {
+        content_ids: [raffleId],
+        content_type: 'product',
+        value: expectedTotal,
+        currency: 'DOP',
+        num_items: parsedTicketQuantity,
+      },
+    }
+    try {
+      scheduleMetaCapiEvent(addPaymentInfo)
+    } catch (error) {
+      console.error(
+        'Meta AddPaymentInfo skipped:',
+        error instanceof Error ? error.message : 'unknown'
+      )
+    }
+  }
 
   await captureServerEvent(customerId, 'voucher_purchase_submitted', {
     purchase_id: purchase.id,
