@@ -57,6 +57,11 @@ import {
 import type { TicketBundle } from "@/types/raffle";
 import { maxTicketsPerPurchase, priceForQuantity } from "@/lib/ticket-bundles";
 import { captureClientEvent, safeErrorMessage } from "@/lib/explore-analytics";
+import {
+  isMetaBrowserEnabled,
+  readMetaBrowserIds,
+  trackMetaAddPaymentInfo,
+} from "@/lib/meta-browser";
 import { readStoredReferralCode } from "@/lib/referral-code";
 import { cn } from "@/lib/utils";
 
@@ -468,6 +473,20 @@ export default function PurchaseDialog({
         formData.append("referralCode", activeReferral);
       }
 
+      let metaEventId: string | null = null;
+      try {
+        if (isMetaBrowserEnabled() && typeof crypto.randomUUID === "function") {
+          metaEventId = crypto.randomUUID();
+          const metaIds = readMetaBrowserIds();
+          formData.append("metaEventId", metaEventId);
+          formData.append("metaEventSourceUrl", window.location.href);
+          if (metaIds.fbp) formData.append("metaFbp", metaIds.fbp);
+          if (metaIds.fbc) formData.append("metaFbc", metaIds.fbc);
+        }
+      } catch {
+        metaEventId = null;
+      }
+
       const response = await fetch(purchaseUrl, {
         method: "POST",
         body: formData,
@@ -476,6 +495,20 @@ export default function PurchaseDialog({
       const result = await response.json();
 
       if (result.success) {
+        if (metaEventId) {
+          try {
+            trackMetaAddPaymentInfo(
+              {
+                contentIds: [raffleId],
+                value: Number(result.data?.totalAmount ?? totalPrice),
+                numItems: Number(result.data?.ticketQuantity ?? data.ticketQuantity),
+              },
+              metaEventId,
+            );
+          } catch {
+            // The server still sends the matching Conversions API event.
+          }
+        }
         if (exploreAnalytics && result.data?.purchaseId) {
           captureClientEvent(
             "voucher_purchase_submitted",
