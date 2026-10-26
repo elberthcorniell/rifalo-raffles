@@ -15,7 +15,7 @@ instagram-carousel
 dist
 dist-ssr
 *.local
-
+tmp
 # Next.js
 .next
 out
