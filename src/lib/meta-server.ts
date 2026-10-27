@@ -203,6 +203,10 @@ export async function sendMetaCapiEvent(event: MetaCapiEvent): Promise<void> {
   }
 }
 
+/**
+ * Confirmed-payment Purchase for when CAPI should own the conversion.
+ * Not called while the browser pixel reports Purchase on voucher submission.
+ */
 export function schedulePurchaseConversion(input: {
   purchaseId: string;
   raffleId: string | null | undefined;

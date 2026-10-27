@@ -61,6 +61,7 @@ import {
   isMetaBrowserEnabled,
   readMetaBrowserIds,
   trackMetaAddPaymentInfo,
+  trackMetaPurchase,
 } from "@/lib/meta-browser";
 import { readStoredReferralCode } from "@/lib/referral-code";
 import { cn } from "@/lib/utils";
@@ -495,19 +496,35 @@ export default function PurchaseDialog({
       const result = await response.json();
 
       if (result.success) {
-        if (metaEventId) {
-          try {
+        const reportedQuantity = Number(result.data?.ticketQuantity ?? data.ticketQuantity);
+        const reportedTotal = Number(result.data?.totalAmount ?? totalPrice);
+        const reportedPurchaseId = result.data?.purchaseId
+          ? String(result.data.purchaseId)
+          : null;
+        try {
+          if (metaEventId) {
             trackMetaAddPaymentInfo(
               {
                 contentIds: [raffleId],
-                value: Number(result.data?.totalAmount ?? totalPrice),
-                numItems: Number(result.data?.ticketQuantity ?? data.ticketQuantity),
+                value: reportedTotal,
+                numItems: reportedQuantity,
               },
               metaEventId,
             );
-          } catch {
-            // The server still sends the matching Conversions API event.
           }
+          if (reportedPurchaseId) {
+            trackMetaPurchase(
+              {
+                contentIds: [raffleId],
+                value: reportedTotal,
+                numItems: reportedQuantity,
+                orderId: reportedPurchaseId,
+              },
+              `purchase_${reportedPurchaseId}`,
+            );
+          }
+        } catch {
+          // A tracking failure must not affect the purchase.
         }
         if (exploreAnalytics && result.data?.purchaseId) {
           captureClientEvent(

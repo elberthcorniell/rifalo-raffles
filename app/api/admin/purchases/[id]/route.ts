@@ -3,7 +3,6 @@ import { requireOrgAdmin } from '@/lib/supabase/require-admin'
 import { sendPaymentApprovedEmail, sendPaymentApprovedAdminEmail } from '@/lib/email'
 import { getOrgBrand } from '@/lib/tenant'
 import { captureServerEvent } from '@/lib/posthog-server'
-import { schedulePurchaseConversion } from '@/lib/meta-server'
 
 export async function GET(
   _request: Request,
@@ -169,29 +168,9 @@ export async function POST(
     }
     sendPaymentApprovedAdminEmail(emailData).catch(console.error)
 
-    if (p.kind !== 'referral_reward') {
-      try {
-        schedulePurchaseConversion({
-          purchaseId: p.id,
-          raffleId: raffle?.id || p.raffle_id,
-          quantity: p.quantity,
-          totalAmount: Number(p.total_amount),
-          eventSourceUrl: p.meta_event_source_url,
-          clientIp: p.meta_client_ip,
-          userAgent: p.meta_client_user_agent,
-          fbp: p.meta_fbp,
-          fbc: p.meta_fbc,
-          email: customer?.email,
-          phone: customer?.whatsapp,
-          name: customer?.name,
-        })
-      } catch (error) {
-        console.error(
-          'Meta Purchase skipped:',
-          error instanceof Error ? error.message : 'unknown'
-        )
-      }
-    }
+    // Purchase is the browser pixel at voucher submission (purchase_<id>).
+    // When CAPI is configured, send schedulePurchaseConversion here instead
+    // and stop the browser Purchase so a confirmed payment is counted once.
   }
 
   await captureServerEvent(user.id, action === 'confirm' ? 'purchase_confirmed' : 'purchase_rejected', {

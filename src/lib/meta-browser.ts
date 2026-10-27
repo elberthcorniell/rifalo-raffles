@@ -12,6 +12,7 @@ export type MetaBrowserCommerce = {
   value: number;
   currency: "DOP";
   num_items?: number;
+  order_id?: string;
 };
 
 const FBC_STORAGE_KEY = "rifalo_meta_fbc";
@@ -125,6 +126,7 @@ function commercePayload(input: {
   contentIds: string[];
   value: number;
   numItems?: number;
+  orderId?: string;
 }): MetaBrowserCommerce | null {
   const contentIds = input.contentIds.filter((id) => typeof id === "string" && id.length > 0);
   if (!contentIds.length || !Number.isFinite(input.value) || input.value < 0) return null;
@@ -137,6 +139,7 @@ function commercePayload(input: {
   if (input.numItems != null && Number.isInteger(input.numItems) && input.numItems > 0) {
     payload.num_items = input.numItems;
   }
+  if (input.orderId) payload.order_id = input.orderId;
   return payload;
 }
 
@@ -196,4 +199,17 @@ export function trackMetaAddPaymentInfo(
   const customData = commercePayload(input);
   if (!customData) return;
   trackMetaPixel("AddPaymentInfo", customData, eventId);
+}
+
+/**
+ * Temporary conversion: the voucher submission is the Purchase.
+ * eventId must be purchase_<purchaseId> so a later CAPI confirmation can reuse it.
+ */
+export function trackMetaPurchase(
+  input: { contentIds: string[]; value: number; numItems: number; orderId: string },
+  eventId: string,
+) {
+  const customData = commercePayload(input);
+  if (!customData || !input.orderId) return;
+  trackMetaPixel("Purchase", customData, eventId);
 }
