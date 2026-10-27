@@ -167,6 +167,10 @@ export async function POST(
       sendPaymentApprovedEmail(emailData).catch(console.error)
     }
     sendPaymentApprovedAdminEmail(emailData).catch(console.error)
+
+    // Purchase is the browser pixel at voucher submission (purchase_<id>).
+    // When CAPI is configured, send schedulePurchaseConversion here instead
+    // and stop the browser Purchase so a confirmed payment is counted once.
   }
 
   await captureServerEvent(user.id, action === 'confirm' ? 'purchase_confirmed' : 'purchase_rejected', {

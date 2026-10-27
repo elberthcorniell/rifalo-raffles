@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getImageSrc } from "@/lib/utils";
 import { Raffle } from "@/types/raffle";
 import posthog from "posthog-js";
+import { trackMetaViewContent } from "@/lib/meta-browser";
 
 export default function RaffleDetailPage() {
   const params = useParams();
@@ -62,6 +63,16 @@ export default function RaffleDetailPage() {
       fetchRaffle();
     }
   }, [params.id, toast]);
+
+  const metaRaffleId = raffle?.id;
+  const metaTicketPrice = raffle?.ticketPrice;
+  useEffect(() => {
+    if (!metaRaffleId || metaTicketPrice == null) return;
+    trackMetaViewContent({
+      contentIds: [metaRaffleId],
+      value: metaTicketPrice,
+    });
+  }, [metaRaffleId, metaTicketPrice]);
 
   const handleParticipate = () => {
     if (raffle) {
@@ -231,7 +242,9 @@ export default function RaffleDetailPage() {
 
                     <PurchaseButton
                       onClick={handleParticipate}
+                      raffleId={raffle.id}
                       ticketPrice={raffle.ticketPrice}
+                      quantity={raffle.minTickets}
                     />
 
                     <div className="pt-4 border-t border-card-border">
@@ -272,7 +285,9 @@ export default function RaffleDetailPage() {
                 </div>
                 <PurchaseButton
                   onClick={handleParticipate}
+                  raffleId={raffle.id}
                   ticketPrice={raffle.ticketPrice}
+                  quantity={raffle.minTickets}
                   className="flex-1 py-6 text-base"
                 />
               </div>
