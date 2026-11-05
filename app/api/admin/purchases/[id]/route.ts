@@ -44,6 +44,7 @@ export async function GET(
     .map((t) => t.display_number)
   const referral = Array.isArray(p.referrals) ? p.referrals[0] : p.referrals
   const kind = p.kind === 'referral_reward' ? 'referral_reward' : 'paid'
+  const heldTicketIds = Array.isArray(p.held_ticket_ids) ? p.held_ticket_ids : []
 
   let voucherUrl: string | null = null
   if (p.voucher_path) {
@@ -77,8 +78,19 @@ export async function GET(
       bankAccount: bank,
       ticketNumbers,
       referrerPhone: kind === 'paid' ? referral?.phone || null : null,
+      canRestoreTickets: heldTicketIds.length === p.quantity,
     },
   })
+}
+
+function revertErrorMessage(message: string) {
+  if (message.includes('TICKET_QUOTA_EXCEEDED')) {
+    return 'El plan no tiene boletos disponibles este mes para volver a reservar esta compra.'
+  }
+  if (message.includes('Not enough available tickets')) {
+    return 'No hay suficientes boletos libres para volver a reservar esta compra.'
+  }
+  return message
 }
 
 export async function POST(
@@ -92,16 +104,16 @@ export async function POST(
   const { user, admin, org } = auth
   const brand = getOrgBrand(org)
   const body = await request.json()
-  const action = body.action as 'confirm' | 'reject'
+  const action = body.action as 'confirm' | 'reject' | 'revert'
   const notes = body.notes as string | undefined
 
-  if (!['confirm', 'reject'].includes(action)) {
+  if (!['confirm', 'reject', 'revert'].includes(action)) {
     return NextResponse.json({ success: false, error: 'Acción inválida' }, { status: 400 })
   }
 
   const { data: existing } = await admin
     .from('purchases')
-    .select('id')
+    .select('id, status')
     .eq('id', id)
     .eq('org_id', org.id)
     .maybeSingle()
@@ -118,7 +130,7 @@ export async function POST(
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 400 })
     }
-  } else {
+  } else if (action === 'reject') {
     const { error } = await admin.rpc('admin_reject_purchase', {
       p_purchase_id: id,
       p_reviewed_by: user.id,
@@ -126,6 +138,16 @@ export async function POST(
     })
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 400 })
+    }
+  } else {
+    const { error } = await admin.rpc('admin_revert_purchase', {
+      p_purchase_id: id,
+    })
+    if (error) {
+      return NextResponse.json(
+        { success: false, error: revertErrorMessage(error.message) },
+        { status: 400 }
+      )
     }
   }
 
@@ -169,10 +191,19 @@ export async function POST(
     sendPaymentApprovedAdminEmail(emailData).catch(console.error)
   }
 
-  await captureServerEvent(user.id, action === 'confirm' ? 'purchase_confirmed' : 'purchase_rejected', {
-    purchase_id: id,
-    organization_id: org.id,
-  })
+  await captureServerEvent(
+    user.id,
+    action === 'confirm'
+      ? 'purchase_confirmed'
+      : action === 'reject'
+        ? 'purchase_rejected'
+        : 'purchase_reverted',
+    {
+      purchase_id: id,
+      organization_id: org.id,
+      ...(action === 'revert' ? { previous_status: existing.status } : {}),
+    }
+  )
 
   return NextResponse.json({ success: true, data: { id, action } })
 }

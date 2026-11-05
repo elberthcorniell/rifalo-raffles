@@ -23,7 +23,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
-import { Check, Loader2, X } from 'lucide-react'
+import { Check, Loader2, Undo2, X } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
 interface PurchaseRow {
@@ -57,6 +57,7 @@ interface PurchaseDetail {
   } | null
   ticketNumbers: string[]
   referrerPhone?: string | null
+  canRestoreTickets?: boolean
 }
 
 const tabs = [
@@ -85,6 +86,7 @@ function PurchasesContent() {
   const [purchase, setPurchase] = useState<PurchaseDetail | null>(null)
   const [notes, setNotes] = useState('')
   const [acting, setActing] = useState(false)
+  const [confirmRevert, setConfirmRevert] = useState(false)
 
   const loadList = useCallback(async () => {
     setLoading(true)
@@ -103,6 +105,7 @@ function PurchasesContent() {
     setDetailOpen(true)
     setDetailLoading(true)
     setPurchase(null)
+    setConfirmRevert(false)
     try {
       const res = await fetch(`/api/admin/purchases/${id}`)
       const json = await res.json()
@@ -117,7 +120,7 @@ function PurchasesContent() {
     }
   }
 
-  const act = async (action: 'confirm' | 'reject') => {
+  const act = async (action: 'confirm' | 'reject' | 'revert') => {
     if (!purchase) return
     setActing(true)
     try {
@@ -129,8 +132,14 @@ function PurchasesContent() {
       const json = await res.json()
       if (!json.success) throw new Error(json.error)
       toast({
-        title: action === 'confirm' ? 'Compra confirmada' : 'Compra rechazada',
+        title:
+          action === 'confirm'
+            ? 'Compra confirmada'
+            : action === 'reject'
+              ? 'Compra rechazada'
+              : 'Compra devuelta a pendiente',
       })
+      setConfirmRevert(false)
       setDetailOpen(false)
       await loadList()
     } catch (err: any) {
@@ -144,7 +153,10 @@ function PurchasesContent() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-[#0B2447]">Compras</h1>
-        <p className="text-muted-foreground">Confirma o rechaza comprobantes de pago</p>
+        <p className="text-muted-foreground">
+          Confirma o rechaza comprobantes. Si te equivocas, abre la compra y devuélvela a
+          pendiente.
+        </p>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -266,7 +278,13 @@ function PurchasesContent() {
         </Table>
       </div>
 
-      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+      <Dialog
+        open={detailOpen}
+        onOpenChange={(open) => {
+          setDetailOpen(open)
+          if (!open) setConfirmRevert(false)
+        }}
+      >
         <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
@@ -410,6 +428,54 @@ function PurchasesContent() {
                     </Button>
                   </DialogFooter>
                 </>
+              )}
+
+              {purchase.status !== 'pending' && purchase.kind === 'referral_reward' && (
+                <p className="rounded-md bg-slate-50 px-3 py-2 text-sm text-muted-foreground">
+                  Estos boletos se anulan si reviertes la compra que los generó.
+                </p>
+              )}
+
+              {purchase.status !== 'pending' && purchase.kind !== 'referral_reward' && (
+                <div className="space-y-3 rounded-md border border-amber-200 bg-amber-50 p-3">
+                  <p className="text-sm text-amber-950">
+                    {purchase.status === 'confirmed'
+                      ? 'Si la confirmaste por error, devuélvela a pendiente. Los boletos vuelven a quedar reservados. Si esta compra entregó boletos por referido, esos boletos se liberan.'
+                      : purchase.canRestoreTickets
+                        ? 'Si la rechazaste por error, devuélvela a pendiente. Se reservan otra vez los mismos boletos, siempre que sigan libres.'
+                        : 'Si la rechazaste por error, devuélvela a pendiente. Los números originales ya no están guardados, así que se reservan boletos libres nuevos.'}
+                  </p>
+                  {confirmRevert ? (
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={acting}
+                        onClick={() => setConfirmRevert(false)}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button size="sm" disabled={acting} onClick={() => act('revert')}>
+                        {acting ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <Undo2 className="h-4 w-4 mr-2" />
+                        )}
+                        Sí, revertir
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={acting}
+                      onClick={() => setConfirmRevert(true)}
+                    >
+                      <Undo2 className="h-4 w-4 mr-2" />
+                      Revertir a pendiente
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
           )}
