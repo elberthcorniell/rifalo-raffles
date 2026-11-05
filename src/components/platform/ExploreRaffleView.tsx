@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Clock, ExternalLink, ShieldCheck, Ticket } from 'lucide-react'
 import { getImageSrc } from '@/lib/utils'
 import { captureClientEvent } from '@/lib/explore-analytics'
+import { trackMetaViewContent } from '@/lib/meta-browser'
 import type { PlatformRafflePayload } from '@/lib/platform-raffle'
 
 const PurchaseDialog = dynamic(() => import('@/components/PurchaseDialog'), {
@@ -96,6 +97,16 @@ export function ExploreRaffleView({
       window.clearTimeout(timer)
     }
   }, [raffle, currency])
+
+  const metaRaffleId = raffle?.id
+  const metaTicketPrice = raffle?.ticketPrice
+  useEffect(() => {
+    if (!metaRaffleId || metaTicketPrice == null) return
+    trackMetaViewContent({
+      contentIds: [metaRaffleId],
+      value: metaTicketPrice,
+    })
+  }, [metaRaffleId, metaTicketPrice])
 
   const remainingTickets = raffle ? raffle.totalTickets - raffle.soldTickets : 0
   const progressPercentage =
@@ -233,7 +244,12 @@ export function ExploreRaffleView({
                       RD${raffle.ticketPrice.toLocaleString()}
                     </span>
                   </div>
-                  <PurchaseButton onClick={openPurchase} ticketPrice={raffle.ticketPrice} />
+                  <PurchaseButton
+                    onClick={openPurchase}
+                    raffleId={raffle.id}
+                    ticketPrice={raffle.ticketPrice}
+                    quantity={raffle.minTickets}
+                  />
                 </Card>
               </div>
             </div>
@@ -254,7 +270,9 @@ export function ExploreRaffleView({
               </div>
               <PurchaseButton
                 onClick={openPurchase}
+                raffleId={raffle.id}
                 ticketPrice={raffle.ticketPrice}
+                quantity={raffle.minTickets}
                 className="flex-1 py-6 text-base"
               />
             </div>
