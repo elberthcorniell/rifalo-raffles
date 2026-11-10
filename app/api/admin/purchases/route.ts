@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { requireOrgAdmin } from '@/lib/supabase/require-admin'
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
 export async function GET(request: Request) {
   const auth = await requireOrgAdmin()
   if ('error' in auth) return auth.error
@@ -8,6 +11,11 @@ export async function GET(request: Request) {
   const { admin, org } = auth
   const { searchParams } = new URL(request.url)
   const status = searchParams.get('status')
+  const accountId = searchParams.get('account')
+
+  if (accountId && !UUID_RE.test(accountId)) {
+    return NextResponse.json({ success: false, error: 'Cuenta inválida' }, { status: 400 })
+  }
 
   let query = admin
     .from('purchases')
@@ -24,6 +32,10 @@ export async function GET(request: Request) {
 
   if (status && ['pending', 'confirmed', 'rejected'].includes(status)) {
     query = query.eq('status', status)
+  }
+
+  if (accountId) {
+    query = query.eq('bank_account_id', accountId)
   }
 
   const { data, error } = await query

@@ -22,9 +22,17 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { Check, Loader2, Undo2, X } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import type { BankAccount } from '@/types/raffle'
 
 interface PurchaseRow {
   id: string
@@ -35,6 +43,12 @@ interface PurchaseRow {
   submittedAt: string
   customer: { name: string | null; whatsapp: string | null; email?: string | null } | null
   raffle: { title: string } | null
+  bankAccount: {
+    id?: string
+    bank: string
+    account_number: string
+    holder_name?: string
+  } | null
   ticketNumbers: string[]
   referrerPhone?: string | null
 }
@@ -73,12 +87,26 @@ const statusBadge: Record<string, string> = {
   rejected: 'bg-red-100 text-red-800',
 }
 
+function accountOptionLabel(account: Pick<BankAccount, 'bank' | 'name' | 'accountNumber'>) {
+  const bank = account.bank || account.name || 'Cuenta'
+  return account.accountNumber ? `${bank} · ${account.accountNumber}` : bank
+}
+
+function purchaseAccountLabel(
+  account: { bank?: string | null; account_number?: string | null } | null,
+) {
+  if (!account?.bank && !account?.account_number) return null
+  return [account.bank, account.account_number].filter(Boolean).join(' · ')
+}
+
 function PurchasesContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { toast } = useToast()
   const status = searchParams.get('status') || ''
+  const account = searchParams.get('account') || ''
   const [purchases, setPurchases] = useState<PurchaseRow[]>([])
+  const [accounts, setAccounts] = useState<BankAccount[]>([])
   const [loading, setLoading] = useState(true)
 
   const [detailOpen, setDetailOpen] = useState(false)
@@ -88,18 +116,53 @@ function PurchasesContent() {
   const [acting, setActing] = useState(false)
   const [confirmRevert, setConfirmRevert] = useState(false)
 
+  const setFilters = (next: { status?: string; account?: string }) => {
+    const params = new URLSearchParams()
+    const nextStatus = next.status !== undefined ? next.status : status
+    const nextAccount = next.account !== undefined ? next.account : account
+    if (nextStatus) params.set('status', nextStatus)
+    if (nextAccount) params.set('account', nextAccount)
+    const q = params.toString()
+    router.push(q ? `/admin/purchases?${q}` : '/admin/purchases')
+  }
+
   const loadList = useCallback(async () => {
     setLoading(true)
-    const q = status ? `?status=${status}` : ''
-    const res = await fetch(`/api/admin/purchases${q}`)
+    const params = new URLSearchParams()
+    if (status) params.set('status', status)
+    if (account) params.set('account', account)
+    const q = params.toString()
+    const res = await fetch(`/api/admin/purchases${q ? `?${q}` : ''}`)
     const json = await res.json()
-    if (json.success) setPurchases(json.data)
+    if (json.success) {
+      setPurchases(json.data)
+    } else {
+      setPurchases([])
+      toast({
+        title: 'Error',
+        description: json.error || 'No se pudieron cargar las compras',
+        variant: 'destructive',
+      })
+    }
     setLoading(false)
-  }, [status])
+  }, [status, account, toast])
 
   useEffect(() => {
     loadList()
   }, [loadList])
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/admin/bank-accounts')
+      .then((res) => res.json())
+      .then((json) => {
+        if (!cancelled && json.success) setAccounts(json.data)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const openDetail = async (id: string) => {
     setDetailOpen(true)
@@ -159,19 +222,38 @@ function PurchasesContent() {
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {tabs.map((t) => (
-          <Button
-            key={t.value || 'all'}
-            variant={status === t.value ? 'default' : 'outline'}
-            size="sm"
-            onClick={() =>
-              router.push(t.value ? `/admin/purchases?status=${t.value}` : '/admin/purchases')
-            }
-          >
-            {t.label}
-          </Button>
-        ))}
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="flex flex-wrap gap-2">
+          {tabs.map((t) => (
+            <Button
+              key={t.value || 'all'}
+              variant={status === t.value ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilters({ status: t.value })}
+            >
+              {t.label}
+            </Button>
+          ))}
+        </div>
+        <Select
+          value={account || 'all'}
+          onValueChange={(value) => setFilters({ account: value === 'all' ? '' : value })}
+        >
+          <SelectTrigger className="h-9 w-full sm:w-[280px]" aria-label="Cuenta">
+            <SelectValue placeholder="Todas las cuentas" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas las cuentas</SelectItem>
+            {account && !accounts.some((item) => item.id === account) && (
+              <SelectItem value={account}>Cuenta seleccionada</SelectItem>
+            )}
+            {accounts.map((item) => (
+              <SelectItem key={item.id} value={item.id}>
+                {accountOptionLabel(item)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="space-y-3 md:hidden">
@@ -190,6 +272,9 @@ function PurchasesContent() {
                   {p.customer?.whatsapp || p.customer?.email || '—'}
                 </p>
                 <p className="text-sm mt-1">{p.raffle?.title}</p>
+                {purchaseAccountLabel(p.bankAccount) && (
+                  <p className="text-xs text-muted-foreground">{purchaseAccountLabel(p.bankAccount)}</p>
+                )}
               </div>
               <Badge className={cn('border-0 shrink-0', statusBadge[p.status])}>{p.status}</Badge>
             </div>
@@ -221,6 +306,7 @@ function PurchasesContent() {
             <TableRow>
               <TableHead>Cliente</TableHead>
               <TableHead>Rifa</TableHead>
+              <TableHead>Cuenta</TableHead>
               <TableHead>Monto</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead>Fecha</TableHead>
@@ -230,14 +316,14 @@ function PurchasesContent() {
           <TableBody>
             {loading && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   Cargando...
                 </TableCell>
               </TableRow>
             )}
             {!loading && purchases.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   No hay compras
                 </TableCell>
               </TableRow>
@@ -251,6 +337,9 @@ function PurchasesContent() {
                   </div>
                 </TableCell>
                 <TableCell>{p.raffle?.title}</TableCell>
+                <TableCell className="text-sm">
+                  {purchaseAccountLabel(p.bankAccount) || '—'}
+                </TableCell>
                 <TableCell>
                   RD$ {p.totalAmount.toLocaleString('es-DO')}
                   <div className="text-xs text-muted-foreground">{p.quantity} boletos</div>
