@@ -4,6 +4,7 @@ import {
   postHogDevCredentials,
   postHogProductionCredentials,
 } from "@/lib/posthog-env";
+import { stripAuthFromAnalyticsProperties } from "@/lib/posthog-url";
 
 function isMetaInAppBrowser() {
   const ua = navigator.userAgent || "";
@@ -54,6 +55,11 @@ if (!credentials) {
     api_host: credentials.host,
     defaults: "2026-01-30",
     capture_exceptions: true,
+    before_send(event) {
+      if (!event) return null;
+      stripAuthFromAnalyticsProperties(event.properties);
+      return event;
+    },
     debug: process.env.NODE_ENV === "development",
     tracing_headers: [window.location.hostname],
     loaded() {

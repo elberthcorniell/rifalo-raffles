@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { headers } from 'next/headers'
 import { requireOrgAdmin } from '@/lib/supabase/require-admin'
 import { getTenantUrl, type OrgPlan } from '@/lib/constants'
 import { normalizeOrgPlan } from '@/lib/billing'
@@ -8,6 +9,8 @@ import {
   priceIdForPlan,
 } from '@/lib/stripe'
 import { captureServerEvent } from '@/lib/posthog-server'
+import { cookieFromHeader } from '@/lib/meta-host'
+import { checkoutAttributionMetadata } from '@/lib/meta-plan-purchase'
 
 export async function POST(request: Request) {
   const auth = await requireOrgAdmin()
@@ -63,24 +66,36 @@ export async function POST(request: Request) {
         .eq('id', org.id)
     }
 
+    const headerList = await headers()
+    const cookieHeader = headerList.get('cookie')
+    const successPath = '/admin/billing?checkout=success'
+    const attribution = checkoutAttributionMetadata({
+      fbp: body.fbp || cookieFromHeader(cookieHeader, '_fbp'),
+      fbc: body.fbc || cookieFromHeader(cookieHeader, '_fbc'),
+      clientIp: headerList.get('x-forwarded-for') || headerList.get('x-real-ip'),
+      userAgent: headerList.get('user-agent'),
+      eventSourceUrl: getTenantUrl(org.slug, successPath),
+    })
+    const metadata = {
+      org_id: org.id,
+      org_slug: org.slug,
+      plan,
+      ...attribution,
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: customerId,
       line_items: [{ price: priceIdForPlan(plan), quantity: 1 }],
-      success_url: getTenantUrl(org.slug, '/admin/billing?checkout=success'),
+      success_url: getTenantUrl(
+        org.slug,
+        '/admin/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}'
+      ),
       cancel_url: getTenantUrl(org.slug, '/admin/billing?checkout=cancel'),
       allow_promotion_codes: true,
-      metadata: {
-        org_id: org.id,
-        org_slug: org.slug,
-        plan,
-      },
+      metadata,
       subscription_data: {
-        metadata: {
-          org_id: org.id,
-          org_slug: org.slug,
-          plan,
-        },
+        metadata,
       },
     })
 

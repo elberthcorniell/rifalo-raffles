@@ -6,7 +6,12 @@ import {
   planFromPriceId,
   planFromSubscription,
 } from '@/lib/stripe'
-import type { OrgPlan } from '@/lib/constants'
+import { getTenantUrl, type OrgPlan } from '@/lib/constants'
+import {
+  invoicePriceId,
+  reportCheckoutPlanPurchase,
+  reportInvoicePlanPurchase,
+} from '@/lib/meta-plan-purchase'
 
 export const runtime = 'nodejs'
 
@@ -73,6 +78,17 @@ async function findOrgIdFromSubscription(
   return data?.id ?? null
 }
 
+function invoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
+  const subscription = invoice.parent?.subscription_details?.subscription
+  if (!subscription) return null
+  return typeof subscription === 'string' ? subscription : subscription.id
+}
+
+function billingReturnUrl(slug: string | null | undefined): string | null {
+  if (!slug) return null
+  return getTenantUrl(slug, '/admin/billing?checkout=success')
+}
+
 export async function POST(request: Request) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
   if (!webhookSecret) {
@@ -99,7 +115,8 @@ export async function POST(request: Request) {
 
   try {
     switch (event.type) {
-      case 'checkout.session.completed': {
+      case 'checkout.session.completed':
+      case 'checkout.session.async_payment_succeeded': {
         const session = event.data.object as Stripe.Checkout.Session
         if (session.mode !== 'subscription') break
 
@@ -118,6 +135,53 @@ export async function POST(request: Request) {
           subscription,
           planMeta === 'plus' || planMeta === 'unlimited' ? planMeta : undefined
         )
+        try {
+          await reportCheckoutPlanPurchase(
+            session,
+            billingReturnUrl(session.metadata?.org_slug)
+          )
+        } catch (error) {
+          console.error(
+            'Meta plan Purchase skipped:',
+            error instanceof Error ? error.message : 'unknown'
+          )
+        }
+        break
+      }
+      case 'invoice.paid': {
+        const invoice = event.data.object as Stripe.Invoice
+        const renewing =
+          invoice.billing_reason === 'subscription_cycle' ||
+          invoice.billing_reason === 'subscription_update'
+        if (renewing) {
+          const subscriptionId = invoiceSubscriptionId(invoice)
+          if (subscriptionId) {
+            const subscription = await getStripe().subscriptions.retrieve(subscriptionId)
+            const orgId = await findOrgIdFromSubscription(subscription)
+            if (orgId) await applySubscriptionToOrg(orgId, subscription)
+          }
+        }
+        const metadata = invoice.parent?.subscription_details?.metadata
+        try {
+          await reportInvoicePlanPurchase({
+            id: invoice.id,
+            billingReason: invoice.billing_reason,
+            amountPaid: invoice.amount_paid,
+            currency: invoice.currency,
+            status: invoice.status,
+            email: invoice.customer_email,
+            name: invoice.customer_name,
+            phone: invoice.customer_phone,
+            metadata,
+            priceId: invoicePriceId(invoice),
+            fallbackEventSourceUrl: billingReturnUrl(metadata?.org_slug),
+          })
+        } catch (error) {
+          console.error(
+            'Meta plan Purchase skipped:',
+            error instanceof Error ? error.message : 'unknown'
+          )
+        }
         break
       }
       case 'customer.subscription.updated':

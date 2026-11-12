@@ -6,6 +6,8 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Check, CreditCard, Loader2, Sparkles } from 'lucide-react'
 import type { OrgPlan } from '@/lib/constants'
+import { readMetaBrowserIds } from '@/lib/meta-browser'
+import { PlanPurchasePixel } from '@/components/admin/PlanPurchasePixel'
 
 interface Quota {
   plan: OrgPlan
@@ -74,10 +76,16 @@ export default function AdminBillingPage() {
     setActionLoading(plan)
     setError(null)
     try {
+      let meta: { fbp: string | null; fbc: string | null } = { fbp: null, fbc: null }
+      try {
+        meta = readMetaBrowserIds()
+      } catch {
+        meta = { fbp: null, fbc: null }
+      }
       const res = await fetch('/api/admin/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ plan, fbp: meta.fbp, fbc: meta.fbc }),
       })
       const json = await res.json()
       if (!json.success || !json.data?.url) {
@@ -122,6 +130,7 @@ export default function AdminBillingPage() {
 
   return (
     <div className="space-y-8 max-w-5xl">
+      <PlanPurchasePixel />
       <div>
         <h1 className="text-2xl font-bold text-[#0B2447]">Facturación</h1>
         <p className="text-muted-foreground">

@@ -37,6 +37,13 @@ export function sanitizeMetaEventId(value: unknown): string | null {
   return EVENT_ID_RE.test(id) ? id : null;
 }
 
+/** Shared by the browser pixel and CAPI so a voucher is counted once. */
+export function ticketVoucherEventId(purchaseId: string): string | null {
+  const id = purchaseId.trim();
+  if (!id) return null;
+  return sanitizeMetaEventId(`ticket_voucher_${id}`);
+}
+
 export function sanitizeFbp(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const cookie = value.trim();
