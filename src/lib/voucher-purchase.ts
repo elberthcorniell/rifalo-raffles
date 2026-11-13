@@ -5,6 +5,7 @@ import { getOrgBrand } from '@/lib/tenant'
 import { normalizeCheckoutFields } from '@/types/org'
 import type { Organization } from '@/types/org'
 import { captureServerEvent } from '@/lib/posthog-server'
+import { buildTicketVoucherEvent } from '@/lib/meta-capi'
 import {
   isMissingMetaColumn,
   readPurchaseMeta,
@@ -455,11 +456,26 @@ export async function processVoucherPurchase({
         num_items: parsedTicketQuantity,
       },
     }
+    const ticketVoucher = buildTicketVoucherEvent({
+      purchaseId: purchase.id,
+      raffleId,
+      quantity: parsedTicketQuantity,
+      totalAmount: expectedTotal,
+      eventSourceUrl: purchaseMeta.meta_event_source_url,
+      clientIp: purchaseMeta.meta_client_ip,
+      userAgent: purchaseMeta.meta_client_user_agent,
+      fbp: purchaseMeta.meta_fbp,
+      fbc: purchaseMeta.meta_fbc,
+      email: customerEmail,
+      phone: whatsapp,
+      name: customerName,
+    })
     try {
       scheduleMetaCapiEvent(addPaymentInfo)
+      if (ticketVoucher) scheduleMetaCapiEvent(ticketVoucher)
     } catch (error) {
       console.error(
-        'Meta AddPaymentInfo skipped:',
+        'Meta voucher events skipped:',
         error instanceof Error ? error.message : 'unknown'
       )
     }

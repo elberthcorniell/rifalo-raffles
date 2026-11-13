@@ -61,7 +61,7 @@ import {
   isMetaBrowserEnabled,
   readMetaBrowserIds,
   trackMetaAddPaymentInfo,
-  trackMetaPurchase,
+  trackMetaTicketVoucherSubmitted,
 } from "@/lib/meta-browser";
 import { readStoredReferralCode } from "@/lib/referral-code";
 import { cn } from "@/lib/utils";
@@ -513,14 +513,14 @@ export default function PurchaseDialog({
             );
           }
           if (reportedPurchaseId) {
-            trackMetaPurchase(
+            trackMetaTicketVoucherSubmitted(
               {
                 contentIds: [raffleId],
                 value: reportedTotal,
                 numItems: reportedQuantity,
                 orderId: reportedPurchaseId,
               },
-              `purchase_${reportedPurchaseId}`,
+              reportedPurchaseId,
             );
           }
         } catch {

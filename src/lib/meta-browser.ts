@@ -4,16 +4,40 @@ import {
   sanitizeEventSourceUrl,
   sanitizeFbc,
   sanitizeFbp,
+  sanitizeMetaEventId,
+  ticketVoucherEventId,
 } from "@/lib/meta-host";
 
 export type MetaBrowserCommerce = {
   content_ids: string[];
+  content_name?: string;
   content_type: "product";
   value: number;
-  currency: "DOP";
+  currency: "DOP" | "USD";
   num_items?: number;
   order_id?: string;
 };
+
+const TICKET_VOUCHER_EVENT_NAME = "TicketVoucherSubmitted";
+const firedPlanPurchases = new Set<string>();
+
+export function resetPlanPurchaseClaimsForTests() {
+  firedPlanPurchases.clear();
+}
+
+type OnceStorage = {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+};
+
+export function claimOnce(eventId: string, storage: OnceStorage, memory: Set<string>): boolean {
+  if (!sanitizeMetaEventId(eventId) || memory.has(eventId)) return false;
+  const key = `rifalo_plan_purchase_${eventId}`;
+  if (storage.getItem(key) === "1") return false;
+  memory.add(eventId);
+  storage.setItem(key, "1");
+  return true;
+}
 
 const FBC_STORAGE_KEY = "rifalo_meta_fbc";
 const initializedPixels = new Set<string>();
@@ -122,6 +146,15 @@ export function trackMetaPixel(
   window.fbq("track", eventName, customData, { eventID: eventId });
 }
 
+function trackMetaCustomPixel(
+  eventName: string,
+  customData: MetaBrowserCommerce,
+  eventId: string,
+) {
+  if (!isMetaBrowserEnabled() || typeof window.fbq !== "function") return;
+  window.fbq("trackCustom", eventName, customData, { eventID: eventId });
+}
+
 function commercePayload(input: {
   contentIds: string[];
   value: number;
@@ -202,14 +235,64 @@ export function trackMetaAddPaymentInfo(
 }
 
 /**
- * Temporary conversion: the voucher submission is the Purchase.
- * eventId must be purchase_<purchaseId> so a later CAPI confirmation can reuse it.
+ * Ticket voucher submit. Custom event so it is not a standard Purchase.
+ * eventId is ticket_voucher_<purchaseId>, shared with CAPI.
  */
-export function trackMetaPurchase(
+export function trackMetaTicketVoucherSubmitted(
   input: { contentIds: string[]; value: number; numItems: number; orderId: string },
-  eventId: string,
+  purchaseId: string,
 ) {
-  const customData = commercePayload(input);
-  if (!customData || !input.orderId) return;
-  trackMetaPixel("Purchase", customData, eventId);
+  const eventId = ticketVoucherEventId(purchaseId);
+  const customData = commercePayload({ ...input, orderId: purchaseId });
+  if (!customData || !eventId) return;
+  trackMetaCustomPixel(TICKET_VOUCHER_EVENT_NAME, customData, eventId);
+}
+
+export type PlanPurchasePixel = {
+  eventId: string;
+  value: number;
+  contentIds: string[];
+  contentName: string;
+  orderId: string;
+};
+
+function browserOnceStorage(): OnceStorage {
+  return {
+    getItem(key) {
+      try {
+        return window.sessionStorage.getItem(key);
+      } catch {
+        return null;
+      }
+    },
+    setItem(key, value) {
+      try {
+        window.sessionStorage.setItem(key, value);
+      } catch {
+        // Private mode can block storage. The in-memory set still covers this page.
+      }
+    },
+  };
+}
+
+/** Browser Purchase for a verified paid plan. Same event id as CAPI. Fires once. */
+export function trackMetaPlanPurchase(input: PlanPurchasePixel): boolean {
+  if (typeof window === "undefined") return false;
+  if (!Number.isFinite(input.value) || input.value <= 0) return false;
+  if (!input.contentIds.length || !input.contentName || !input.orderId) return false;
+  if (!claimOnce(input.eventId, browserOnceStorage(), firedPlanPurchases)) return false;
+  trackMetaPixel(
+    "Purchase",
+    {
+      content_ids: input.contentIds,
+      content_name: input.contentName,
+      content_type: "product",
+      value: Math.round(input.value * 100) / 100,
+      currency: "USD",
+      num_items: 1,
+      order_id: input.orderId,
+    },
+    input.eventId,
+  );
+  return true;
 }

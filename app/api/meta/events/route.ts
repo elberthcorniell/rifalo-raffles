@@ -10,14 +10,11 @@ import {
   sanitizeMetaEventId,
   sanitizeUserAgent,
 } from "@/lib/meta-host";
+import { BROWSER_FORWARDED_EVENTS, type MetaCommerceData, type MetaEventName } from "@/lib/meta-capi";
 import {
   isMetaServerEnabled,
   scheduleMetaCapiEvent,
-  type MetaCommerceData,
-  type MetaEventName,
 } from "@/lib/meta-server";
-
-const BROWSER_EVENTS = new Set<MetaEventName>(["ViewContent", "InitiateCheckout"]);
 
 function skipped() {
   return NextResponse.json({ ok: true, skipped: true });
@@ -75,7 +72,7 @@ export async function POST(request: Request) {
   }
   const payload = body as Record<string, unknown>;
   const eventName = payload.eventName;
-  if (typeof eventName !== "string" || !BROWSER_EVENTS.has(eventName as MetaEventName)) {
+  if (typeof eventName !== "string" || !BROWSER_FORWARDED_EVENTS.has(eventName as MetaEventName)) {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
   const eventId = sanitizeMetaEventId(payload.eventId);

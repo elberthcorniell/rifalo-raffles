@@ -190,9 +190,9 @@ export async function POST(
     }
     sendPaymentApprovedAdminEmail(emailData).catch(console.error)
 
-    // Purchase is the browser pixel at voucher submission (purchase_<id>).
-    // When CAPI is configured, send schedulePurchaseConversion here instead
-    // and stop the browser Purchase so a confirmed payment is counted once.
+    // Ticket vouchers are TicketVoucherSubmitted, not a Meta Purchase.
+    // Plus and Unlimited payments are the standard Purchase, sent from the
+    // Stripe webhook after the plan is paid.
   }
 
   await captureServerEvent(
