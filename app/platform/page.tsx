@@ -11,6 +11,7 @@ import {
   Check,
 } from 'lucide-react'
 import { PlatformHeader } from '@/components/platform/PlatformHeader'
+import { heroCopyForUtms } from '@/lib/hero-copy'
 
 const GOLD = '#FFD000'
 
@@ -217,7 +218,14 @@ const plans = [
   },
 ]
 
-export default function PlatformLandingPage() {
+export default async function PlatformLandingPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  const params = await searchParams
+  const hero = heroCopyForUtms(params.utm_campaign, params.utm_content)
+
   return (
     <div className="min-h-screen bg-background font-poppins">
       <PlatformHeader />
@@ -231,24 +239,27 @@ export default function PlatformLandingPage() {
           <div className="max-w-6xl mx-auto px-4 py-16 md:py-28 grid md:grid-cols-2 gap-10 md:gap-12 items-center">
             <div className="space-y-6">
               <h1 className="text-4xl md:text-5xl font-bold leading-tight">
-                Publica tu rifa hoy. Empieza a vender boletos.
+                {hero.title}
               </h1>
               <p className="text-lg text-white/80 max-w-xl">
-                Crea la rifa, comparte tu página y cobra por transferencia.
-                Los números se asignan solos. Tú apruebas los pagos. Sin
-                programador y sin tarjeta.
+                {hero.subtitle}
               </p>
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  size="lg"
-                  className="bg-[#FFD000] text-black hover:bg-[#F0C400]"
-                  asChild
-                >
-                  <Link href="/signup">
-                    Crear mi rifa gratis
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    size="lg"
+                    className="bg-[#FFD000] text-black hover:bg-[#F0C400]"
+                    asChild
+                  >
+                    <Link href="/signup">
+                      Lanza tu rifa gratis
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </div>
+                <p className="text-base font-medium text-white">
+                  Gratis hasta 250 boletos al mes.
+                </p>
               </div>
               <p className="text-sm text-white/60">
                 Empieza gratis · Sin tarjeta · Sin permanencia · Tus primeros 250
