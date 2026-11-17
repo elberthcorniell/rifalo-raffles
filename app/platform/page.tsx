@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { PLATFORM, getRootDomain, PLAN_PRICES, SHOW_EXPLORE } from '@/lib/constants'
+import { PLATFORM, getRootDomain, PLAN_PRICES } from '@/lib/constants'
 import { Button } from '@/components/ui/button'
 import {
   Ticket,
@@ -11,8 +11,6 @@ import {
   Check,
 } from 'lucide-react'
 import { PlatformHeader } from '@/components/platform/PlatformHeader'
-import { CatalogGrid } from '@/components/platform/CatalogGrid'
-import { fetchCatalogRaffles } from '@/lib/raffle-catalog'
 
 const GOLD = '#FFD000'
 
@@ -219,9 +217,7 @@ const plans = [
   },
 ]
 
-export default async function PlatformLandingPage() {
-  const catalog = SHOW_EXPLORE ? await fetchCatalogRaffles(6) : []
-
+export default function PlatformLandingPage() {
   return (
     <div className="min-h-screen bg-background font-poppins">
       <PlatformHeader />
@@ -310,44 +306,6 @@ export default async function PlatformLandingPage() {
             </div>
           </div>
         </section>
-
-        {SHOW_EXPLORE && (
-        <section className="border-b">
-          <div className="max-w-6xl mx-auto px-4 py-16 md:py-20">
-            <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div className="max-w-xl space-y-2">
-                <h2 className="text-3xl font-bold text-[#111111]">
-                  Rifas verificadas
-                </h2>
-                <p className="text-muted-foreground">
-                  Premios que revisamos y organizadores de confianza. Compra aquí o en su sitio.
-                </p>
-              </div>
-              {catalog.length > 0 && (
-                <Button variant="outline" className="border-black/15" asChild>
-                  <Link href="/explore">
-                    Ver todas
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-              )}
-            </div>
-            {catalog.length > 0 ? (
-              <CatalogGrid raffles={catalog} />
-            ) : (
-              <div className="rounded-2xl border bg-card px-6 py-12 text-center space-y-3">
-                <p className="font-semibold text-[#111111]">Todavía no hay rifas verificadas</p>
-                <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                  Cuando un organizador solicite verificación y la aprobemos, aparecerá aquí.
-                </p>
-                <Button className="bg-[#FFD000] text-black hover:bg-[#F0C400]" asChild>
-                  <Link href="/signup">Crear mi rifa gratis</Link>
-                </Button>
-              </div>
-            )}
-          </div>
-        </section>
-        )}
 
         <section className="max-w-6xl mx-auto px-4 py-20">
           <div className="max-w-2xl mb-10 space-y-3">

@@ -5,7 +5,7 @@ export const PLATFORM = {
   copyright: `© ${new Date().getFullYear()} Rifalo`,
 } as const
 
-/** Public verified-raffle catalog, nav, and homepage section. */
+/** Public verified-raffle catalog and the nav link to it. */
 export const SHOW_EXPLORE = true
 
 export type OrgPlan = 'free' | 'plus' | 'unlimited'
