@@ -275,6 +275,24 @@ function browserOnceStorage(): OnceStorage {
   };
 }
 
+const firedRegistrations = new Set<string>();
+
+/**
+ * Browser CompleteRegistration. eventId is signup_<user id>, the same id CAPI sends.
+ * No-ops off rifalo.do. A blocked pixel must not throw.
+ */
+export function trackMetaCompleteRegistration(eventId: string): boolean {
+  try {
+    if (!isMetaBrowserEnabled() || typeof window.fbq !== "function") return false;
+    if (!sanitizeMetaEventId(eventId) || firedRegistrations.has(eventId)) return false;
+    firedRegistrations.add(eventId);
+    window.fbq("track", "CompleteRegistration", { status: true }, { eventID: eventId });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Browser Purchase for a verified paid plan. Same event id as CAPI. Fires once. */
 export function trackMetaPlanPurchase(input: PlanPurchasePixel): boolean {
   if (typeof window === "undefined") return false;

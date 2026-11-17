@@ -1,5 +1,6 @@
 import {
   isRifaloProductionHost,
+  isSignupEventId,
   sanitizeClientIp,
   sanitizeEventSourceUrl,
   sanitizeFbc,
@@ -18,6 +19,7 @@ export const TICKET_VOUCHER_EVENT_NAME = "TicketVoucherSubmitted";
 export const BROWSER_FORWARDED_EVENTS = new Set<MetaEventName>([
   "ViewContent",
   "InitiateCheckout",
+  "CompleteRegistration",
 ]);
 
 export type MetaEventName =
@@ -25,6 +27,7 @@ export type MetaEventName =
   | "InitiateCheckout"
   | "AddPaymentInfo"
   | "Purchase"
+  | "CompleteRegistration"
   | typeof TICKET_VOUCHER_EVENT_NAME;
 
 export type MetaCurrency = "DOP" | "USD";
@@ -52,7 +55,8 @@ export type MetaCapiEvent = {
     phone?: string | null;
     name?: string | null;
   };
-  customData: MetaCommerceData;
+  /** Required for commerce events. CompleteRegistration does not send an order value. */
+  customData?: MetaCommerceData;
 };
 
 export type MetaCapiSkipReason =
@@ -106,6 +110,27 @@ function eventKey(eventName: string, eventId: string): string {
   return `${eventName}:${eventId}`;
 }
 
+function outboundCustomData(
+  event: MetaCapiEvent,
+): Record<string, string | number | string[]> | null {
+  if (event.eventName === "CompleteRegistration") {
+    return { status: "completed" };
+  }
+  const commerce = event.customData;
+  if (!commerce || (commerce.currency !== "DOP" && commerce.currency !== "USD")) return null;
+  if (!Number.isFinite(commerce.value) || commerce.value < 0) return null;
+  const customData: Record<string, string | number | string[]> = {
+    content_ids: commerce.content_ids,
+    content_type: "product",
+    value: commerce.value,
+    currency: commerce.currency,
+  };
+  if (commerce.content_name) customData.content_name = commerce.content_name;
+  if (commerce.num_items != null) customData.num_items = commerce.num_items;
+  if (commerce.order_id) customData.order_id = commerce.order_id;
+  return customData;
+}
+
 /**
  * Send one event to Meta. Never throws. A missing access token is a no-op
  * with a single warning. The same event name + event id is sent once per
@@ -125,12 +150,8 @@ export async function sendMetaCapiEvent(event: MetaCapiEvent): Promise<MetaCapiR
       return { sent: false, reason: "not_production" };
     }
     if (!pixelId) return { sent: false, reason: "invalid" };
-    if (event.customData.currency !== "DOP" && event.customData.currency !== "USD") {
-      return { sent: false, reason: "invalid" };
-    }
-    if (!Number.isFinite(event.customData.value) || event.customData.value < 0) {
-      return { sent: false, reason: "invalid" };
-    }
+    const outboundCustom = outboundCustomData(event);
+    if (!outboundCustom) return { sent: false, reason: "invalid" };
 
     const accessToken = getAccessToken();
     if (!accessToken) {
@@ -154,16 +175,6 @@ export async function sendMetaCapiEvent(event: MetaCapiEvent): Promise<MetaCapiR
     sentEventKeys.add(dedupKey);
     claimedKey = dedupKey;
 
-    const customData: Record<string, string | number | string[]> = {
-      content_ids: event.customData.content_ids,
-      content_type: "product",
-      value: event.customData.value,
-      currency: event.customData.currency,
-    };
-    if (event.customData.content_name) customData.content_name = event.customData.content_name;
-    if (event.customData.num_items != null) customData.num_items = event.customData.num_items;
-    if (event.customData.order_id) customData.order_id = event.customData.order_id;
-
     const params = new URLSearchParams();
     params.set(
       "data",
@@ -175,7 +186,7 @@ export async function sendMetaCapiEvent(event: MetaCapiEvent): Promise<MetaCapiR
           event_source_url: eventSourceUrl,
           action_source: "website",
           user_data: userData,
-          custom_data: customData,
+          custom_data: outboundCustom,
         },
       ]),
     );
@@ -278,6 +289,36 @@ export function buildTicketVoucherEvent(input: {
       currency: "DOP",
       num_items: quantity,
       order_id: input.purchaseId,
+    },
+  };
+}
+
+/** Browser and CAPI share eventId from signupEventId(userId). */
+export function buildCompleteRegistrationEvent(input: {
+  eventId: string;
+  eventSourceUrl: string;
+  email?: string | null;
+  phone?: string | null;
+  clientIp?: string | null;
+  userAgent?: string | null;
+  fbp?: string | null;
+  fbc?: string | null;
+}): MetaCapiEvent | null {
+  const eventId = sanitizeMetaEventId(input.eventId);
+  const eventSourceUrl = sanitizeEventSourceUrl(input.eventSourceUrl);
+  if (!eventId || !isSignupEventId(eventId) || !eventSourceUrl) return null;
+
+  return {
+    eventName: "CompleteRegistration",
+    eventId,
+    eventSourceUrl,
+    clientIpAddress: input.clientIp,
+    clientUserAgent: input.userAgent,
+    fbp: input.fbp,
+    fbc: input.fbc,
+    user: {
+      email: input.email,
+      phone: input.phone,
     },
   };
 }

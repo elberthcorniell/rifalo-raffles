@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import {
+  cookieFromHeader,
   hostnameFromHeaderValue,
   isRifaloProductionHost,
   sanitizeClientIp,
@@ -10,7 +11,12 @@ import {
   sanitizeMetaEventId,
   sanitizeUserAgent,
 } from "@/lib/meta-host";
-import { BROWSER_FORWARDED_EVENTS, type MetaCommerceData, type MetaEventName } from "@/lib/meta-capi";
+import {
+  BROWSER_FORWARDED_EVENTS,
+  buildCompleteRegistrationEvent,
+  type MetaCommerceData,
+  type MetaEventName,
+} from "@/lib/meta-capi";
 import {
   isMetaServerEnabled,
   scheduleMetaCapiEvent,
@@ -18,6 +24,13 @@ import {
 
 function skipped() {
   return NextResponse.json({ ok: true, skipped: true });
+}
+
+function contactField(value: unknown, max: number): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > max) return null;
+  return trimmed;
 }
 
 function parseCommerce(value: unknown): MetaCommerceData | null {
@@ -75,6 +88,26 @@ export async function POST(request: Request) {
   if (typeof eventName !== "string" || !BROWSER_FORWARDED_EVENTS.has(eventName as MetaEventName)) {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
+
+  if (eventName === "CompleteRegistration") {
+    const cookieHeader = headerList.get("cookie");
+    const event = buildCompleteRegistrationEvent({
+      eventId: typeof payload.eventId === "string" ? payload.eventId : "",
+      eventSourceUrl: typeof payload.eventSourceUrl === "string" ? payload.eventSourceUrl : "",
+      email: contactField(payload.email, 320),
+      phone: contactField(payload.phone, 32),
+      clientIp: sanitizeClientIp(
+        headerList.get("x-forwarded-for") || headerList.get("x-real-ip"),
+      ),
+      userAgent: sanitizeUserAgent(headerList.get("user-agent")),
+      fbp: sanitizeFbp(payload.fbp) || sanitizeFbp(cookieFromHeader(cookieHeader, "_fbp")),
+      fbc: sanitizeFbc(payload.fbc) || sanitizeFbc(cookieFromHeader(cookieHeader, "_fbc")),
+    });
+    if (!event) return NextResponse.json({ ok: false }, { status: 400 });
+    scheduleMetaCapiEvent(event);
+    return NextResponse.json({ ok: true });
+  }
+
   const eventId = sanitizeMetaEventId(payload.eventId);
   const eventSourceUrl = sanitizeEventSourceUrl(payload.eventSourceUrl);
   const customData = parseCommerce(payload.customData);

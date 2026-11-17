@@ -3,11 +3,13 @@
 import { useEffect, useRef } from "react";
 import posthog from "posthog-js";
 import { createClient } from "@/lib/supabase/client";
+import { rememberLandingUtms } from "@/lib/landing-utm";
 
 export function PostHogInit() {
   const identifiedUserId = useRef<string | null>(null);
 
   useEffect(() => {
+    rememberLandingUtms(window.location.search);
     if (!posthog.__loaded) return;
 
     const supabase = createClient();
