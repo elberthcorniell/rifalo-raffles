@@ -44,6 +44,20 @@ export function ticketVoucherEventId(purchaseId: string): string | null {
   return sanitizeMetaEventId(`ticket_voucher_${id}`);
 }
 
+const AUTH_USER_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/** Shared by the browser pixel and CAPI so one new account is counted once. */
+export function signupEventId(userId: string): string | null {
+  const id = userId.trim().toLowerCase();
+  if (!AUTH_USER_ID_RE.test(id)) return null;
+  return sanitizeMetaEventId(`signup_${id}`);
+}
+
+export function isSignupEventId(value: string): boolean {
+  return value.startsWith("signup_") && signupEventId(value.slice("signup_".length)) === value;
+}
+
 export function sanitizeFbp(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const cookie = value.trim();

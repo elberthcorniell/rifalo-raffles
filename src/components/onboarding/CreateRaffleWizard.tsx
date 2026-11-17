@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { getSessionHandoffUrl } from '@/lib/auth-handoff'
 import { authErrorMessage } from '@/lib/auth-errors'
+import { reportSignupCompleted } from '@/lib/signup-completed'
+import { isNewlyCreatedAuthUser } from '@/lib/signup-user'
 import { getRootDomain, slugifyOrgName, isValidSlug } from '@/lib/constants'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -197,6 +199,13 @@ export function CreateRaffleWizard() {
       }
       setError(authErrorMessage(signError, 'Error al registrarse'))
       return null
+    }
+
+    // A real identity means Supabase created the user, even if email
+    // confirmation is still pending and there is no session yet.
+    // The "already registered" branch above signs in and does not get here.
+    if (signData.user && isNewlyCreatedAuthUser(signData.user)) {
+      reportSignupCompleted({ userId: signData.user.id, email })
     }
 
     if (signData.user && !signData.session) {
