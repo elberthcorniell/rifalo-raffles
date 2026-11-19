@@ -12,6 +12,8 @@ import {
 } from 'lucide-react'
 import { PlatformHeader } from '@/components/platform/PlatformHeader'
 import { heroCopyForUtms } from '@/lib/hero-copy'
+import { HERO_CTA_HREF, HERO_CTA_LABEL, HERO_EYEBROW } from '@/lib/hero-proof'
+import { getHeroProofLine } from '@/lib/hero-stats'
 
 const GOLD = '#FFD000'
 
@@ -225,43 +227,51 @@ export default async function PlatformLandingPage({
 }) {
   const params = await searchParams
   const hero = heroCopyForUtms(params.utm_campaign, params.utm_content)
+  const proof = await getHeroProofLine()
 
   return (
     <div className="min-h-screen bg-background font-poppins">
       <PlatformHeader />
 
       <main>
-        <section className="relative overflow-hidden bg-black text-white">
+        <section className="relative overflow-hidden bg-black text-white" data-hero>
           <div
             className="pointer-events-none absolute -right-24 top-10 h-80 w-80 rounded-full blur-3xl"
             style={{ background: 'rgba(255, 208, 0, 0.18)' }}
           />
-          <div className="max-w-6xl mx-auto px-4 py-16 md:py-28 grid md:grid-cols-2 gap-10 md:gap-12 items-center">
-            <div className="space-y-6">
-              <h1 className="text-4xl md:text-5xl font-bold leading-tight">
+          <div className="max-w-6xl mx-auto px-4 py-6 md:py-28 grid md:grid-cols-2 gap-8 md:gap-12 items-center">
+            <div className="flex flex-col gap-3 md:gap-5">
+              <p className="order-1 text-sm font-semibold tracking-wide text-[#FFD000] md:order-none">
+                {HERO_EYEBROW}
+              </p>
+              <h1 className="order-2 text-4xl font-bold leading-tight md:order-none md:text-5xl">
                 {hero.title}
               </h1>
-              <p className="text-lg text-white/80 max-w-xl">
+              <p className="order-5 max-w-xl text-base leading-relaxed text-white/80 md:order-none md:text-lg">
                 {hero.subtitle}
               </p>
-              <div className="space-y-3">
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    size="lg"
-                    className="bg-[#FFD000] text-black hover:bg-[#F0C400]"
-                    asChild
-                  >
-                    <Link href="/signup">
-                      Lanza tu rifa gratis
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                </div>
-                <p className="text-base font-medium text-white">
-                  Gratis hasta 250 boletos al mes.
-                </p>
+              <div className="order-3 pt-1 md:order-none">
+                <Button
+                  size="lg"
+                  className="h-12 w-full bg-[#FFD000] text-base font-bold text-black hover:bg-[#F0C400] sm:w-auto"
+                  asChild
+                >
+                  <Link href={HERO_CTA_HREF} data-hero-cta>
+                    {HERO_CTA_LABEL}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
               </div>
-              <p className="text-sm text-white/60">
+              <p
+                className="order-4 text-sm font-medium leading-snug text-white/80 md:order-none"
+                data-hero-proof
+              >
+                {proof}
+              </p>
+              <p className="order-6 text-sm font-medium text-white md:order-none">
+                Gratis hasta 250 boletos al mes.
+              </p>
+              <p className="order-7 text-sm text-white/60 md:order-none">
                 Empieza gratis · Sin tarjeta · Sin permanencia · Tus primeros 250
                 boletos de cada mes son gratis
               </p>
