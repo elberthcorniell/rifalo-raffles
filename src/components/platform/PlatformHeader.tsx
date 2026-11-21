@@ -22,6 +22,9 @@ export function PlatformHeader() {
             </Button>
           )}
           <Button variant="ghost" size="sm" className="px-2 text-white hover:bg-white/10 hover:text-white sm:px-3" asChild>
+            <Link href="/blog">Blog</Link>
+          </Button>
+          <Button variant="ghost" size="sm" className="px-2 text-white hover:bg-white/10 hover:text-white sm:px-3" asChild>
             <Link href="/login">
               <span className="sm:hidden">Entrar</span>
               <span className="hidden sm:inline">Iniciar sesión</span>

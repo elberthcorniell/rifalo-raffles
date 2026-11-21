@@ -495,6 +495,11 @@ export default async function PlatformLandingPage({
       <footer className="border-t py-8 text-center text-sm text-muted-foreground">
         <p>{PLATFORM.copyright}</p>
         <p className="mt-1">
+          <Link href="/blog" className="hover:text-black">
+            Blog
+          </Link>
+        </p>
+        <p className="mt-1">
           <a href={`mailto:${PLATFORM.email}`} className="hover:text-black">
             {PLATFORM.email}
           </a>

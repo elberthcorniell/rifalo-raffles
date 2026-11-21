@@ -233,6 +233,67 @@
     padding-left: 1rem;
   }
 
+  .blog-prose {
+    color: #111111;
+    font-size: 1.0625rem;
+  }
+
+  .blog-prose > :first-child {
+    margin-top: 0;
+  }
+
+  .blog-prose h2 {
+    margin: 2rem 0 0.6rem;
+    font-size: 1.35rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.25;
+    color: #111111;
+  }
+
+  .blog-prose p {
+    margin: 0.85rem 0;
+    line-height: 1.7;
+    color: #1f2933;
+  }
+
+  .blog-prose ul {
+    margin: 1rem 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .blog-prose .blog-checklist li {
+    position: relative;
+    margin: 0.55rem 0;
+    padding-left: 1.7rem;
+    line-height: 1.5;
+    color: #1f2933;
+  }
+
+  .blog-prose .blog-checklist li::before {
+    content: "";
+    position: absolute;
+    left: 0.15rem;
+    top: 0.45rem;
+    width: 0.7rem;
+    height: 0.4rem;
+    border-left: 2px solid #111111;
+    border-bottom: 2px solid #111111;
+    transform: rotate(-45deg);
+  }
+
+  .blog-prose a {
+    color: #0B2447;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .blog-prose strong {
+    color: #111111;
+    font-weight: 600;
+  }
+
   html {
     touch-action: manipulation;
     -ms-touch-action: manipulation;

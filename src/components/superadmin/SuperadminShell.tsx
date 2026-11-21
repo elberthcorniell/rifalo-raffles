@@ -10,6 +10,7 @@ import {
   Menu,
   Users,
   Shield,
+  Mail,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -22,6 +23,7 @@ const nav = [
   { href: '/superadmin/users', label: 'Usuarios', icon: Users },
   { href: '/superadmin/orgs', label: 'Organizaciones', icon: Building2 },
   { href: '/superadmin/raffles', label: 'Rifas', icon: Ticket },
+  { href: '/superadmin/blog', label: 'Correo del blog', icon: Mail },
 ]
 
 export function SuperadminShell({

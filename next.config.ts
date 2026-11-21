@@ -4,6 +4,13 @@ import path from "path";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   outputFileTracingRoot: path.join(__dirname),
+  outputFileTracingIncludes: {
+    '/blog': ['./content/blog/**/*'],
+    '/blog/[slug]': ['./content/blog/**/*'],
+    '/sitemap.xml': ['./content/blog/**/*'],
+    '/api/platform/superadmin/blog': ['./content/blog/**/*'],
+    '/api/platform/superadmin/blog/send': ['./content/blog/**/*'],
+  },
   images: {
     remotePatterns: [
       {
