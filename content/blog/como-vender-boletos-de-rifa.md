@@ -4,7 +4,7 @@ seoTitle: Cómo vender boletos de rifa: lo que hace un organizador top
 h1: Cómo vender boletos de rifa: lo que aprendimos de un organizador de alto volumen
 metaDescription: Miramos los datos de un organizador de alto volumen en Rifalo. Esto es lo que hace y lo que tú puedes copiar desde hoy.
 date: 2026-11-21
-published: false
+published: true
 coverImage: /blog/como-vender-boletos-de-rifa/cover.png
 coverAlt: Portada clara de Rifalo con el logo, la etiqueta Blog, el título de la nota y dos datos, 57.6% de las visitas llegó del link en la bio y 59.8% de los boletos vino de compras de 100 o más.
 faq:

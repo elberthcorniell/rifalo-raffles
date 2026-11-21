@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import { describe, it } from "node:test";
 import {
   BLOG_EMAIL_EXCLUDED_ORG_SLUGS,
@@ -29,9 +31,10 @@ describe("blog publish filter and sitemap", () => {
   const posts = loadBlogPosts();
   const post = posts.find((item) => item.slug === "como-vender-boletos-de-rifa");
 
-  it("loads the first post as a draft with the brief's copy", () => {
+  it("loads the first post as published, dated today, with the brief's copy", () => {
     assert.ok(post);
-    assert.equal(post.published, false);
+    assert.equal(post.published, true);
+    assert.equal(post.date, "2026-11-21");
     assert.equal(post.seoTitle, "Cómo vender boletos de rifa: lo que hace un organizador top");
     assert.equal(post.coverImage, "/blog/como-vender-boletos-de-rifa/cover.png");
     assert.equal(post.faq.length, 4);
@@ -42,14 +45,21 @@ describe("blog publish filter and sitemap", () => {
   });
 
   it("hides unpublished posts in production and keeps them in preview", () => {
-    assert.equal(visibleBlogPosts(posts, "production").length, 0);
-    assert.equal(isBlogPostVisible(post!, "production"), false);
-    assert.equal(visibleBlogPosts(posts, "preview").some((item) => item.slug === post!.slug), true);
-    assert.equal(visibleBlogPosts(posts, undefined).some((item) => item.slug === post!.slug), true);
+    const draft = { ...post!, published: false };
+    assert.equal(isBlogPostVisible(post!, "production"), true);
+    assert.equal(isBlogPostVisible(draft, "production"), false);
+    assert.equal(isBlogPostVisible(draft, "preview"), true);
+    assert.equal(visibleBlogPosts([draft], "production").length, 0);
+    assert.equal(visibleBlogPosts([draft], "preview").length, 1);
   });
 
   it("lists the marketing home and signup, and leaves drafts and tenant legal pages out", () => {
-    assert.deepEqual(sitemapBlogPaths(posts), ["/", "/signup", "/blog"]);
+    assert.deepEqual(sitemapBlogPaths(posts), [
+      "/",
+      "/signup",
+      "/blog",
+      "/blog/como-vender-boletos-de-rifa",
+    ]);
     assert.deepEqual(
       sitemapBlogPaths([
         { slug: "publicado", published: true, date: "2026-11-01", updated: "2026-11-20" },
@@ -232,6 +242,13 @@ describe("robots policy", () => {
     const tenantRules = tenant.rules as { disallow?: string }[];
     assert.ok(marketingRules.every((rule) => rule.disallow === "/superadmin"));
     assert.ok(tenantRules.every((rule) => rule.disallow === undefined));
+  });
+});
+
+describe("blog post route", () => {
+  it("renders on each request so an unknown slug can 404", () => {
+    const source = fs.readFileSync(path.join(process.cwd(), "app/blog/[slug]/page.tsx"), "utf8");
+    assert.match(source, /export const dynamic = ["']force-dynamic["']/);
   });
 });
 
