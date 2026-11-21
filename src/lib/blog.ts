@@ -59,6 +59,14 @@ export function visibleBlogPosts(posts: BlogPost[], env?: string): BlogPost[] {
   return posts.filter((post) => isBlogPostVisible(post, env))
 }
 
+/** Newest published posts for the marketing home. Drafts stay off this list. */
+export function latestPublishedBlogPosts(posts: BlogPost[], limit = 3): BlogPost[] {
+  return [...posts]
+    .filter((post) => post.published)
+    .sort((a, b) => b.date.localeCompare(a.date) || a.slug.localeCompare(b.slug))
+    .slice(0, Math.max(0, limit))
+}
+
 export type MarketingSitemapEntry = {
   path: string
   lastModified?: string
