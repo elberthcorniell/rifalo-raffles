@@ -7,7 +7,7 @@ Plataforma de gestión de rifas (Next.js 15) con **organizaciones** en subdomini
 - Next.js 15 (App Router) + React 18 + TypeScript + Tailwind / shadcn
 - Supabase (Postgres, Auth, Storage)
 - SendGrid (correos de compras)
-- Resend (correo de bienvenida al registrarse). Ver [docs/email-resend.md](docs/email-resend.md).
+- Resend (bienvenida, respuesta de verificación y recordatorios de compras pendientes). Ver [docs/email-resend.md](docs/email-resend.md).
 
 ## Arquitectura multi-tenant
 

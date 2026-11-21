@@ -1,4 +1,4 @@
-import { Resend } from 'resend'
+import { sendResendEmail } from '@/lib/emails/resend'
 import type { OutboundWelcomeEmail } from '@/lib/emails/welcome'
 
 const MISSING_KEY_WARNING = 'RESEND_API_KEY is not configured. Skipping welcome email.'
@@ -13,26 +13,5 @@ export async function sendWithResend(
     return { ok: false }
   }
 
-  try {
-    const resend = new Resend(key)
-    const { error } = await resend.emails.send(
-      {
-        from: message.from,
-        to: message.to,
-        subject: message.subject,
-        html: message.html,
-        text: message.text,
-        replyTo: message.replyTo,
-      },
-      { idempotencyKey: message.idempotencyKey },
-    )
-    if (error) {
-      console.error('Welcome email was rejected', error.name)
-      return { ok: false }
-    }
-    return { ok: true }
-  } catch (err) {
-    console.error('Welcome email failed', err)
-    return { ok: false }
-  }
+  return sendResendEmail(message, { apiKey: key, logLabel: 'Welcome email' })
 }

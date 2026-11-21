@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { notifyRaffleVerificationResponse } from '@/lib/emails/notify-verification'
 import { requirePlatformAdmin } from '@/lib/supabase/require-platform-admin'
 
 const UUID_RE =
@@ -68,13 +69,23 @@ export async function PATCH(
     .update(updates)
     .eq('id', id)
     .select(
-      'id, verification_status, verification_requested_at, verification_reviewed_at, verification_note'
+      'id, title, org_id, verification_status, verification_requested_at, verification_reviewed_at, verification_note, verification_response_email_for'
     )
     .single()
 
   if (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
   }
+
+  await notifyRaffleVerificationResponse(admin, {
+    id: data.id,
+    title: data.title,
+    orgId: data.org_id,
+    status: data.verification_status,
+    requestedAt: data.verification_requested_at,
+    note: data.verification_note,
+    sentFor: data.verification_response_email_for,
+  })
 
   return NextResponse.json({
     success: true,

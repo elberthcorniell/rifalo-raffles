@@ -1,10 +1,16 @@
-# Correo de bienvenida con Resend
+# Correos con Resend
 
-Rifalo manda un correo al dueño de la rifa justo después de que crea su cuenta y publica la rifa en `/signup`. El envío sale de `POST /api/emails/welcome`. Si `RESEND_API_KEY` no está, el servidor escribe una advertencia y no hace nada: el registro no falla.
+Rifalo manda tres correos con Resend, todos al dueño de la rifa:
 
-Los correos de compras siguen en SendGrid. Este documento es solo el correo de bienvenida.
+- Bienvenida, justo después de crear la cuenta y publicar la rifa en `/signup` (`POST /api/emails/welcome`).
+- Respuesta de verificación, cuando un superadmin aprueba o rechaza la solicitud.
+- Recordatorio, mientras haya compras pendientes de revisar.
 
-No envíes este correo a clientes reales mientras lo pruebas. Usa un buzón tuyo.
+Si `RESEND_API_KEY` no está, el servidor escribe una advertencia y no envía nada. El registro, la respuesta de verificación y el cron siguen igual.
+
+Los correos de compras al comprador siguen en SendGrid. Este documento es solo Resend.
+
+No envíes estos correos a clientes reales mientras los pruebas. Usa un buzón tuyo.
 
 ## 1. Cuenta y dominio en Resend
 
@@ -89,12 +95,13 @@ Primero **Preview**. Producción se llena cuando el correo de prueba se vea bien
 | `RESEND_API_KEY` | la clave de Resend (`re_...`) | Preview |
 | `EMAIL_FROM` | `Rifalo <hola@mail.rifalo.do>` si verificaste el subdominio. Si verificaste la raíz, puedes omitirla: el default es `Rifalo <hola@rifalo.do>` | Preview |
 | `EMAIL_REPLY_TO` | opcional. Solo si ese buzón ya recibe correo | Preview |
+| `CRON_SECRET` | un secreto largo, al azar. Vercel Cron lo manda como `Authorization: Bearer ...` al recordatorio. Si falta, esa ruta responde 401 | Preview y Production |
 
 3. Marca la clave como Sensitive.
 4. Redeploy del deployment de **Preview** para que tome las variables. No hace falta un deploy de producción.
 5. Cuando el correo de prueba esté bien, repite las mismas variables en **Production** y redeploy de producción.
 
-Si `RESEND_API_KEY` falta en un entorno, el signup sigue igual y en los logs aparece `RESEND_API_KEY is not configured. Skipping welcome email.`
+Si `RESEND_API_KEY` falta en un entorno, el signup sigue igual y en los logs aparece `RESEND_API_KEY is not configured. Skipping welcome email.` La verificación y el cron avisan con su propia frase y tampoco envían.
 
 ## 4. Cómo probarlo sin escribirle a un cliente
 
@@ -109,3 +116,53 @@ Hasta que el dominio verifique, Resend solo entrega al correo de la cuenta de Re
 7. Borra la organización de prueba si no la vas a usar.
 
 No recorras usuarios existentes para “ponerlos al día”. Este correo es solo para quien acaba de registrarse (cuenta creada en las últimas 24 horas y sin la marca de envío).
+
+## 5. Respuesta de verificación
+
+Cuando un superadmin aprueba o rechaza una rifa en revisión, `PATCH /api/platform/superadmin/raffles/[id]` guarda la decisión y después escribe al dueño. Si el correo falla, la decisión queda guardada.
+
+El correo dice si quedó verificada o rechazada. Si hay motivo o nota, va en el mensaje. El botón abre `/admin/raffles` de esa organización.
+
+Se manda una sola vez por solicitud. La marca es `raffles.verification_response_email_for`: guarda el `verification_requested_at` de la solicitud ya avisada. Si el dueño vuelve a pedir verificación, esa fecha cambia y la nueva respuesta puede generar otro correo. Un segundo clic sobre la misma solicitud no manda otro.
+
+La migración marca como ya avisadas las rifas que ya estaban verificadas o rechazadas. No se les escribe por el pasado. Si el envío falla, el mismo cron de recordatorios vuelve a intentarlo durante 48 horas, con la misma clave de idempotencia.
+
+El destinatario es el usuario con rol `owner`. Si no se puede leer su correo, se usa `admin_email` y, si tampoco está, `email` de la organización.
+
+## 6. Recordatorio de compras pendientes
+
+La cola es `purchases` con `status = 'pending'` (comprobantes esperando confirmación). Los boletos de referido se crean ya confirmados, así que no arrancan el reloj. Si una compra vuelve a `pending`, entra en la cola.
+
+El cron es `GET /api/cron/pending-review-reminders`, cada 15 minutos (`vercel.json`). Solo corre si el header es `Authorization: Bearer <CRON_SECRET>`. Sin `CRON_SECRET` responde 401. Sin `RESEND_API_KEY` responde 200 y no envía.
+
+Cada corrida revisa como máximo 50 organizaciones, las que ya cumplieron el siguiente paso. La consulta usa el índice de compras pendientes.
+
+### Horario
+
+El reloj de una organización es `org_review_reminders.queue_started_at`: el `submitted_at` de la compra pendiente más antigua en el momento en que la cola dejó de estar vacía.
+
+Los pasos son 1, 2, 4, 8, 16… horas desde ese inicio (el doble cada vez, hasta 65536). En cada corrida sale como máximo un correo, el del paso más alto que ya se cumplió y todavía no se envió. Si el cron estuvo caído, no se recuperan los pasos intermedios: se manda el último que ya tocaba.
+
+Ejemplo, cola que empieza a las 12:00:
+
+| Hora | Qué pasa |
+| --- | --- |
+| 13:00 | primer correo (1 hora) |
+| 14:00 | segundo (2 horas) |
+| 15:00 | nada |
+| 16:00 | tercero (4 horas) |
+| 20:00 | cuarto (8 horas) |
+
+El cron de cada 15 minutos puede atrasar un paso hasta 15 minutos. No manda un correo en cada corrida.
+
+`last_step_hours` guarda el último paso enviado. Antes de enviar se reserva ese paso; si Resend no acepta el correo, se suelta la reserva para intentarlo en la siguiente corrida. La clave de idempotencia de Resend incluye la organización, el inicio de la cola y el paso, así un reintento no duplica el mismo aviso.
+
+### Cuándo se reinicia
+
+Mientras quede alguna compra `pending`, el inicio de la cola no se mueve. Revisar la más antigua y dejar otras pendientes no reinicia el horario.
+
+Cuando la cola queda en cero, un trigger borra la fila de `org_review_reminders`. La próxima compra pendiente crea una fila nueva, con `last_step_hours` en 0, y el primer recordatorio vuelve a ser a la hora.
+
+La migración es `20261121130914_owner_review_notifications.sql`. No edita migraciones ya aplicadas. Hay que aplicarla en Supabase antes de que estos correos funcionen en ese proyecto.
+
+El botón del recordatorio abre `/admin/purchases`. El texto dice cuántas compras siguen pendientes y desde hace cuántas horas, como mínimo, espera la más antigua.
