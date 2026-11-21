@@ -14,7 +14,7 @@ const blogDescription = 'Notas del equipo de Rifalo para vender más boletos.'
 
 export function generateMetadata(): Metadata {
   const posts = visibleBlogPosts(loadBlogPosts())
-  const image = posts[0] ? blogCoverPublicPath(posts[0]) : BLOG_DEFAULT_COVER
+  const image = `${BLOG_ORIGIN}${posts[0] ? blogCoverPublicPath(posts[0]) : BLOG_DEFAULT_COVER}`
   const alt = posts[0]?.coverAlt || 'Rifalo'
   return {
     title: 'Blog',

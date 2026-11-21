@@ -33,7 +33,7 @@ export async function generateMetadata({
   }
 
   const canonical = `${BLOG_ORIGIN}/blog/${post.slug}`
-  const image = blogCoverPublicPath(post)
+  const image = `${BLOG_ORIGIN}${blogCoverPublicPath(post)}`
 
   return {
     title: { absolute: post.seoTitle },
