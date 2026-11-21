@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import PhoneInput from "@/components/ui/phone-input";
@@ -92,7 +93,6 @@ export default function VerifyTicketsPage() {
 }
 
 function VerifyTicketsContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
@@ -150,11 +150,13 @@ function VerifyTicketsContent() {
       <main className="container mx-auto px-4 py-8 max-w-2xl">
         <Button
           variant="ghost"
-          onClick={() => router.back()}
+          asChild
           className="mb-6 text-primary hover:text-primary/80"
         >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Volver
+          <Link href="/">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Volver
+          </Link>
         </Button>
 
         {/* Title Section */}

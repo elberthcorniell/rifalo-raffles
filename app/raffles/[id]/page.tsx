@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import PurchaseDialog from "@/components/PurchaseDialog";
@@ -21,7 +22,6 @@ import { trackMetaViewContent } from "@/lib/meta-browser";
 
 export default function RaffleDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const { toast } = useToast();
   const [raffle, setRaffle] = useState<Raffle | null>(null);
   const [loading, setLoading] = useState(true);
@@ -101,11 +101,13 @@ export default function RaffleDetailPage() {
       <main className="container mx-auto px-4 py-8">
         <Button
           variant="ghost"
-          onClick={() => router.back()}
+          asChild
           className="mb-6 text-primary hover:text-primary/80"
         >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Volver
+          <Link href="/">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Volver
+          </Link>
         </Button>
 
         {loading ? (
@@ -123,8 +125,8 @@ export default function RaffleDetailPage() {
         ) : error ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground text-lg mb-4">{error}</p>
-            <Button onClick={() => router.back()}>
-              Volver
+            <Button asChild>
+              <Link href="/">Volver</Link>
             </Button>
           </div>
         ) : raffle ? (

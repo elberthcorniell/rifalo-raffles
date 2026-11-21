@@ -7,6 +7,7 @@ import {
 } from '@/lib/constants'
 import { orgAdminPath, ONBOARDING_PATH } from '@/lib/onboarding'
 import { ORG_ID_HEADER, ORG_SLUG_HEADER, PATHNAME_HEADER, parseHost } from '@/lib/tenant-host'
+import { isTenantContentPath } from '@/lib/storefront-paths'
 import { isSuperadminEmail, isSuperadminPath } from '@/lib/superadmin'
 import { effectiveOrgPlan } from '@/lib/billing'
 
@@ -251,7 +252,12 @@ async function continueAsPlatform(
   }
 
   // Block tenant-only routes on the platform site
-  if (pathname.startsWith('/admin') || pathname.startsWith('/raffles') || pathname.startsWith('/verify-tickets')) {
+  if (
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/raffles') ||
+    pathname.startsWith('/verify-tickets') ||
+    isTenantContentPath(pathname)
+  ) {
     const rewriteUrl = request.nextUrl.clone()
     rewriteUrl.pathname = '/platform/not-found'
     return NextResponse.rewrite(rewriteUrl)
