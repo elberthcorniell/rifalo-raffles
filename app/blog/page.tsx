@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { BlogChrome } from '@/components/blog/BlogChrome'
 import {
+  BLOG_DEFAULT_COVER,
+  BLOG_ORIGIN,
   blogCoverPublicPath,
   formatBlogDate,
   loadBlogPosts,
@@ -12,16 +14,16 @@ const blogDescription = 'Notas del equipo de Rifalo para vender más boletos.'
 
 export function generateMetadata(): Metadata {
   const posts = visibleBlogPosts(loadBlogPosts())
-  const image = posts[0] ? blogCoverPublicPath(posts[0]) : '/blog/default-og.png'
+  const image = posts[0] ? blogCoverPublicPath(posts[0]) : BLOG_DEFAULT_COVER
   const alt = posts[0]?.coverAlt || 'Rifalo'
   return {
     title: 'Blog',
     description: blogDescription,
-    alternates: { canonical: 'https://rifalo.do/blog' },
+    alternates: { canonical: `${BLOG_ORIGIN}/blog` },
     openGraph: {
       title: 'Blog de Rifalo',
       description: blogDescription,
-      url: 'https://rifalo.do/blog',
+      url: `${BLOG_ORIGIN}/blog`,
       type: 'website',
       images: [{ url: image, width: 1200, height: 630, alt }],
     },

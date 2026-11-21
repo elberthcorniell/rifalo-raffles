@@ -14,6 +14,7 @@ export type BlogPost = {
   h1: string
   metaDescription: string
   date: string
+  updated: string | null
   published: boolean
   coverImage: string | null
   coverAlt: string
@@ -58,9 +59,40 @@ export function visibleBlogPosts(posts: BlogPost[], env?: string): BlogPost[] {
   return posts.filter((post) => isBlogPostVisible(post, env))
 }
 
-/** Unpublished posts stay out of the sitemap in every environment. */
-export function sitemapBlogPaths(posts: { slug: string; published: boolean }[]): string[] {
-  return ['/blog', ...posts.filter((post) => post.published).map((post) => `/blog/${post.slug}`)]
+export type MarketingSitemapEntry = {
+  path: string
+  lastModified?: string
+  changeFrequency: 'weekly' | 'monthly'
+  priority: number
+}
+
+/**
+ * Public marketing URLs. Tenant legal pages (/terminos, /privacidad,
+ * /reglamento, /soporte) 404 on rifalo.do, so they are not listed.
+ * Unpublished posts stay out in every environment.
+ */
+export function marketingSitemapEntries(
+  posts: { slug: string; published: boolean; date?: string; updated?: string | null }[],
+): MarketingSitemapEntry[] {
+  return [
+    { path: '/', changeFrequency: 'weekly', priority: 1 },
+    { path: '/signup', changeFrequency: 'monthly', priority: 0.9 },
+    { path: '/blog', changeFrequency: 'weekly', priority: 0.8 },
+    ...posts
+      .filter((post) => post.published)
+      .map((post) => ({
+        path: `/blog/${post.slug}`,
+        lastModified: post.updated || post.date,
+        changeFrequency: 'monthly' as const,
+        priority: 0.7,
+      })),
+  ]
+}
+
+export function sitemapBlogPaths(
+  posts: { slug: string; published: boolean; date?: string; updated?: string | null }[],
+): string[] {
+  return marketingSitemapEntries(posts).map((entry) => entry.path)
 }
 
 export function formatBlogDate(iso: string): string {
@@ -109,6 +141,7 @@ export function blogStructuredData(post: BlogPost, imageUrl: string): Record<str
       headline: post.h1,
       description: post.metaDescription,
       datePublished: `${post.date}T00:00:00-04:00`,
+      dateModified: `${post.updated || post.date}T00:00:00-04:00`,
       mainEntityOfPage: pageUrl,
       image: imageUrl,
       author: { '@type': 'Organization', name: 'Rifalo', url: BLOG_ORIGIN },
@@ -135,6 +168,16 @@ export function blogStructuredData(post: BlogPost, imageUrl: string): Record<str
       })),
     })
   }
+
+  graph.push({
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Inicio', item: `${BLOG_ORIGIN}/` },
+      { '@type': 'ListItem', position: 2, name: 'Blog', item: `${BLOG_ORIGIN}/blog` },
+      { '@type': 'ListItem', position: 3, name: post.h1, item: pageUrl },
+    ],
+  })
 
   return graph
 }
@@ -170,6 +213,10 @@ export function parseBlogSource(raw: string, filename = 'post.md'): BlogPost {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     throw new Error(`${filename}: la fecha tiene que ser YYYY-MM-DD`)
   }
+  const updatedRaw = asString(data.updated)
+  if (updatedRaw && !/^\d{4}-\d{2}-\d{2}$/.test(updatedRaw)) {
+    throw new Error(`${filename}: updated tiene que ser YYYY-MM-DD`)
+  }
 
   const faq = asFaq(data.faq)
   const emailSubjects = asStringList(data.emailSubjects)
@@ -182,6 +229,7 @@ export function parseBlogSource(raw: string, filename = 'post.md'): BlogPost {
     h1,
     metaDescription,
     date,
+    updated: updatedRaw || null,
     published: data.published === true || data.published === 'true',
     coverImage: asString(data.coverImage) || null,
     coverAlt: asString(data.coverAlt) || h1,

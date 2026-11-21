@@ -12,11 +12,14 @@ import {
   blogStructuredData,
   isBlogPostVisible,
   loadBlogPosts,
+  marketingSitemapEntries,
+  parseBlogSource,
   renderBlogBody,
   sitemapBlogPaths,
   visibleBlogPosts,
 } from "../src/lib/blog.ts";
 import { buildBlogEmail, withEmailUtms } from "../src/lib/blog-email.ts";
+import { buildRobots, isMarketingHost } from "../src/lib/robots-policy.ts";
 import { isBlogUnsubscribePath, isMarketingBlogPath } from "../src/lib/blog-paths.ts";
 import { signBlogUnsubscribeToken, verifyBlogUnsubscribeToken } from "../src/lib/blog-unsubscribe.ts";
 
@@ -45,11 +48,22 @@ describe("blog publish filter and sitemap", () => {
     assert.equal(visibleBlogPosts(posts, undefined).some((item) => item.slug === post!.slug), true);
   });
 
-  it("adds /blog to the sitemap and leaves drafts out", () => {
-    assert.deepEqual(sitemapBlogPaths(posts), ["/blog"]);
+  it("lists the marketing home and signup, and leaves drafts and tenant legal pages out", () => {
+    assert.deepEqual(sitemapBlogPaths(posts), ["/", "/signup", "/blog"]);
     assert.deepEqual(
-      sitemapBlogPaths([{ slug: "publicado", published: true }, { slug: "borrador", published: false }]),
-      ["/blog", "/blog/publicado"],
+      sitemapBlogPaths([
+        { slug: "publicado", published: true, date: "2026-11-01", updated: "2026-11-20" },
+        { slug: "borrador", published: false, date: "2026-11-02" },
+      ]),
+      ["/", "/signup", "/blog", "/blog/publicado"],
+    );
+    const published = marketingSitemapEntries([
+      { slug: "publicado", published: true, date: "2026-11-01", updated: "2026-11-20" },
+    ]).find((entry) => entry.path === "/blog/publicado");
+    assert.equal(published?.lastModified, "2026-11-20");
+    assert.equal(
+      sitemapBlogPaths(posts).some((path) => path === "/terminos" || path === "/privacidad"),
+      false,
     );
   });
 
@@ -65,10 +79,29 @@ describe("blog publish filter and sitemap", () => {
   it("builds Article and FAQ JSON-LD from the frontmatter", () => {
     assert.ok(post);
     const graph = blogStructuredData(post, "https://rifalo.do/blog/como-vender-boletos-de-rifa/opengraph-image");
-    assert.equal(graph[0]["@type"], "Article");
-    assert.equal(graph[1]["@type"], "FAQPage");
-    const questions = graph[1].mainEntity as { name: string }[];
+    const article = graph.find((item) => item["@type"] === "Article");
+    const faq = graph.find((item) => item["@type"] === "FAQPage");
+    const crumbs = graph.find((item) => item["@type"] === "BreadcrumbList");
+    assert.ok(article);
+    assert.ok(faq);
+    assert.equal(article.dateModified, `${post.date}T00:00:00-04:00`);
+    const questions = faq.mainEntity as { name: string }[];
     assert.equal(questions[0].name, "¿A qué hora conviene promocionar una rifa?");
+    const items = crumbs?.itemListElement as { name: string }[];
+    assert.deepEqual(items.map((item) => item.name), ["Inicio", "Blog", post.h1]);
+    assert.doesNotMatch(post.coverAlt, new RegExp(post.h1.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    assert.match(post.coverAlt, /57\.6%/);
+    assert.match(post.coverAlt, /59\.8%/);
+  });
+
+  it("uses updated as dateModified when the frontmatter has it", () => {
+    const parsed = parseBlogSource(
+      ["---", "slug: nota", "seoTitle: T", "h1: H", "metaDescription: M", "date: 2026-11-01", "updated: 2026-11-21", "published: true", "---", "", "Hola"].join("\n"),
+    );
+    assert.equal(parsed.updated, "2026-11-21");
+    const article = blogStructuredData(parsed, "https://rifalo.do/x").find((item) => item["@type"] === "Article");
+    assert.equal(article?.dateModified, "2026-11-21T00:00:00-04:00");
+    assert.equal(article?.datePublished, "2026-11-01T00:00:00-04:00");
   });
 });
 
@@ -181,6 +214,24 @@ describe("blog audience", () => {
     });
     assert.equal(counts.paying.willSend.length, 0);
     assert.equal(counts.paying.alreadySent, 1);
+  });
+});
+
+describe("robots policy", () => {
+  it("adds the sitemap and blocks superadmin only on the marketing host", () => {
+    assert.equal(isMarketingHost("rifalo.do", "rifalo.do"), true);
+    assert.equal(isMarketingHost("www.rifalo.do", "rifalo.do"), true);
+    assert.equal(isMarketingHost("demo.rifalo.do", "rifalo.do"), false);
+    assert.equal(isMarketingHost("organizador.rifalo.do", "rifalo.do"), false);
+
+    const marketing = buildRobots(true);
+    const tenant = buildRobots(false);
+    assert.equal(marketing.sitemap, "https://rifalo.do/sitemap.xml");
+    assert.equal(tenant.sitemap, undefined);
+    const marketingRules = marketing.rules as { disallow?: string }[];
+    const tenantRules = tenant.rules as { disallow?: string }[];
+    assert.ok(marketingRules.every((rule) => rule.disallow === "/superadmin"));
+    assert.ok(tenantRules.every((rule) => rule.disallow === undefined));
   });
 });
 

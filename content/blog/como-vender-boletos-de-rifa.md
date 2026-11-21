@@ -6,7 +6,7 @@ metaDescription: Miramos los datos de un organizador de alto volumen en Rifalo. 
 date: 2026-11-21
 published: false
 coverImage: /blog/como-vender-boletos-de-rifa/cover.png
-coverAlt: Cómo vender boletos de rifa
+coverAlt: Portada clara de Rifalo con el logo, la etiqueta Blog, el título de la nota y dos datos, 57.6% de las visitas llegó del link en la bio y 59.8% de los boletos vino de compras de 100 o más.
 faq:
   - q: ¿A qué hora conviene promocionar una rifa?
     a: Para el organizador que estudiamos, entre 6 y 11 de la noche, con pico a las 8. El domingo fue su mejor día.

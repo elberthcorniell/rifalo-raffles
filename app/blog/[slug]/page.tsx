@@ -48,6 +48,7 @@ export async function generateMetadata({
       type: 'article',
       url: canonical,
       publishedTime: `${post.date}T00:00:00-04:00`,
+      modifiedTime: `${post.updated || post.date}T00:00:00-04:00`,
       images: [{ url: image, width: 1200, height: 630, alt: post.coverAlt }],
     },
     twitter: {
