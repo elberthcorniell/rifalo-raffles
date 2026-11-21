@@ -17,6 +17,10 @@ import {
 
 type Params = { slug: string }
 
+// The root layout reads headers(). Statically prerendering notFound() then
+// throws DYNAMIC_SERVER_USAGE instead of returning a 404.
+export const dynamic = 'force-dynamic'
+
 export function generateStaticParams() {
   return visibleBlogPosts(loadBlogPosts()).map((post) => ({ slug: post.slug }))
 }
