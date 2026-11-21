@@ -15,6 +15,7 @@ import {
   CreditCard,
   Users,
   KeyRound,
+  Scale,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -35,6 +36,7 @@ const nav = [
   { href: '/admin/purchases', label: 'Compras', icon: ShoppingCart },
   { href: '/admin/bank-accounts', label: 'Cuentas', icon: Building2 },
   { href: '/admin/testimonials', label: 'Testimonios', icon: MessageSquareQuote },
+  { href: '/admin/legal', label: 'Legal', icon: Scale },
   { href: '/admin/billing', label: 'Facturación', icon: CreditCard },
   { href: '/admin/team', label: 'Equipo', icon: Users },
   { href: '/admin/settings', label: 'Sitio web', icon: Globe },

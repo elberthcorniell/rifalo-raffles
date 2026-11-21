@@ -1,8 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from "next/link";
 import { Mail, Phone, MapPin } from "lucide-react";
 import { useOrgBrand } from "@/components/OrgBrandProvider";
+import { LEGAL_DOC_PATHS, WINNERS_PATH } from "@/lib/storefront-paths";
 
 const Footer = ({
   showHowItWorks,
@@ -71,7 +73,11 @@ const Footer = ({
               {howItWorksVisible && (
                 <li><a href="#como-funciona" className="opacity-80 hover:opacity-100 transition-opacity">Cómo Funciona</a></li>
               )}
-              <li><a href="#ganadores" className="opacity-80 hover:opacity-100 transition-opacity">Ganadores</a></li>
+              <li>
+                <Link href={WINNERS_PATH} className="opacity-80 hover:opacity-100 transition-opacity">
+                  Ganadores
+                </Link>
+              </li>
               {testimonialsVisible && hasTestimonials && (
                 <li><a href="#testimonios" className="opacity-80 hover:opacity-100 transition-opacity">Testimonios</a></li>
               )}
@@ -81,10 +87,26 @@ const Footer = ({
           <div className="space-y-4">
             <h4 className="text-lg font-semibold">Legal</h4>
             <ul className="space-y-2 text-sm">
-              <li><a href="#terminos" className="opacity-80 hover:opacity-100 transition-opacity">Términos y Condiciones</a></li>
-              <li><a href="#privacidad" className="opacity-80 hover:opacity-100 transition-opacity">Política de Privacidad</a></li>
-              <li><a href="#reglamento" className="opacity-80 hover:opacity-100 transition-opacity">Reglamento de Rifas</a></li>
-              <li><a href="#soporte" className="opacity-80 hover:opacity-100 transition-opacity">Soporte</a></li>
+              <li>
+                <Link href={LEGAL_DOC_PATHS.terms} className="opacity-80 hover:opacity-100 transition-opacity">
+                  Términos y Condiciones
+                </Link>
+              </li>
+              <li>
+                <Link href={LEGAL_DOC_PATHS.privacy} className="opacity-80 hover:opacity-100 transition-opacity">
+                  Política de Privacidad
+                </Link>
+              </li>
+              <li>
+                <Link href={LEGAL_DOC_PATHS.rules} className="opacity-80 hover:opacity-100 transition-opacity">
+                  Reglamento de Rifas
+                </Link>
+              </li>
+              <li>
+                <Link href={LEGAL_DOC_PATHS.support} className="opacity-80 hover:opacity-100 transition-opacity">
+                  Soporte
+                </Link>
+              </li>
             </ul>
           </div>
 
