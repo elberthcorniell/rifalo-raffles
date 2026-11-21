@@ -7,6 +7,7 @@ import {
   type AudienceUser,
 } from "../src/lib/blog-audience.ts";
 import {
+  BLOG_DEFAULT_COVER,
   blogCoverPublicPath,
   blogStructuredData,
   isBlogPostVisible,
@@ -29,7 +30,7 @@ describe("blog publish filter and sitemap", () => {
     assert.ok(post);
     assert.equal(post.published, false);
     assert.equal(post.seoTitle, "Cómo vender boletos de rifa: lo que hace un organizador top");
-    assert.equal(post.coverImage, "/blog/como-vender-boletos-de-rifa/cover.jpg");
+    assert.equal(post.coverImage, "/blog/como-vender-boletos-de-rifa/cover.png");
     assert.equal(post.faq.length, 4);
     assert.equal(post.emailSubjects.length, 3);
     assert.equal(post.emailSubjects[0], "Organizador: esto hace el que más boletos vende en Rifalo");
@@ -52,10 +53,13 @@ describe("blog publish filter and sitemap", () => {
     );
   });
 
-  it("falls back to the generated OG image until the cover file exists", () => {
+  it("uses the cover file and falls back to the default OG image", () => {
     assert.ok(post);
-    const image = blogCoverPublicPath(post);
-    assert.ok(image === post.coverImage || image === `/blog/${post.slug}/opengraph-image`);
+    assert.equal(blogCoverPublicPath(post), "/blog/como-vender-boletos-de-rifa/cover.png");
+    assert.equal(
+      blogCoverPublicPath({ slug: "sin-portada", coverImage: "/blog/sin-portada/cover.png" }),
+      BLOG_DEFAULT_COVER,
+    );
   });
 
   it("builds Article and FAQ JSON-LD from the frontmatter", () => {

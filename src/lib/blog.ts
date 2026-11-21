@@ -3,6 +3,7 @@ import path from 'node:path'
 import { renderLegalMarkdown } from '@/lib/legal-markdown'
 
 export const BLOG_ORIGIN = 'https://rifalo.do'
+export const BLOG_DEFAULT_COVER = '/blog/default-og.png'
 const BLOG_DIR = path.join(process.cwd(), 'content', 'blog')
 
 export type BlogFaq = { q: string; a: string }
@@ -92,7 +93,7 @@ export function blogCoverFile(post: Pick<BlogPost, 'coverImage'>): string | null
 }
 
 export function blogCoverPublicPath(post: Pick<BlogPost, 'slug' | 'coverImage'>): string {
-  return blogCoverFile(post) ?? `/blog/${post.slug}/opengraph-image`
+  return blogCoverFile(post) ?? BLOG_DEFAULT_COVER
 }
 
 export function jsonLdScript(data: unknown): string {

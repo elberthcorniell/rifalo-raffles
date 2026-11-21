@@ -8,16 +8,30 @@ import {
   visibleBlogPosts,
 } from '@/lib/blog'
 
-export const metadata: Metadata = {
-  title: 'Blog',
-  description: 'Notas del equipo de Rifalo para vender más boletos.',
-  alternates: { canonical: 'https://rifalo.do/blog' },
-  openGraph: {
-    title: 'Blog de Rifalo',
-    description: 'Notas del equipo de Rifalo para vender más boletos.',
-    url: 'https://rifalo.do/blog',
-    type: 'website',
-  },
+const blogDescription = 'Notas del equipo de Rifalo para vender más boletos.'
+
+export function generateMetadata(): Metadata {
+  const posts = visibleBlogPosts(loadBlogPosts())
+  const image = posts[0] ? blogCoverPublicPath(posts[0]) : '/blog/default-og.png'
+  const alt = posts[0]?.coverAlt || 'Rifalo'
+  return {
+    title: 'Blog',
+    description: blogDescription,
+    alternates: { canonical: 'https://rifalo.do/blog' },
+    openGraph: {
+      title: 'Blog de Rifalo',
+      description: blogDescription,
+      url: 'https://rifalo.do/blog',
+      type: 'website',
+      images: [{ url: image, width: 1200, height: 630, alt }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: 'Blog de Rifalo',
+      description: blogDescription,
+      images: [image],
+    },
+  }
 }
 
 export default function BlogIndexPage() {

@@ -7,7 +7,6 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     '/blog': ['./content/blog/**/*'],
     '/blog/[slug]': ['./content/blog/**/*'],
-    '/blog/[slug]/opengraph-image': ['./content/blog/**/*'],
     '/sitemap.xml': ['./content/blog/**/*'],
     '/api/platform/superadmin/blog': ['./content/blog/**/*'],
     '/api/platform/superadmin/blog/send': ['./content/blog/**/*'],

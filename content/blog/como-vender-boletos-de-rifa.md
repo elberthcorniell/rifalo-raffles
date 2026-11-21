@@ -5,9 +5,7 @@ h1: Cómo vender boletos de rifa: lo que aprendimos de un organizador de alto vo
 metaDescription: Miramos los datos de un organizador de alto volumen en Rifalo. Esto es lo que hace y lo que tú puedes copiar desde hoy.
 date: 2026-11-21
 published: false
-# La imagen real va en public/blog/como-vender-boletos-de-rifa/cover.jpg (1200x630).
-# Mientras ese archivo no exista, la página usa la imagen OG generada.
-coverImage: /blog/como-vender-boletos-de-rifa/cover.jpg
+coverImage: /blog/como-vender-boletos-de-rifa/cover.png
 coverAlt: Cómo vender boletos de rifa
 faq:
   - q: ¿A qué hora conviene promocionar una rifa?
