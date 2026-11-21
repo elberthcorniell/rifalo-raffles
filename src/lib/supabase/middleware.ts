@@ -8,6 +8,7 @@ import {
 import { orgAdminPath, ONBOARDING_PATH } from '@/lib/onboarding'
 import { ORG_ID_HEADER, ORG_SLUG_HEADER, PATHNAME_HEADER, parseHost } from '@/lib/tenant-host'
 import { isTenantContentPath } from '@/lib/storefront-paths'
+import { isBlogUnsubscribePath, isMarketingBlogPath } from '@/lib/blog-paths'
 import { isSuperadminEmail, isSuperadminPath } from '@/lib/superadmin'
 import { effectiveOrgPlan } from '@/lib/billing'
 
@@ -81,6 +82,14 @@ async function continueAsTenant(
   service: ServiceClient,
   org: TenantOrg
 ) {
+  if (
+    isMarketingBlogPath(pathname) ||
+    isBlogUnsubscribePath(pathname) ||
+    pathname === '/sitemap.xml'
+  ) {
+    return new NextResponse('Not Found', { status: 404 })
+  }
+
   requestHeaders.set(ORG_ID_HEADER, org.id)
   requestHeaders.set(ORG_SLUG_HEADER, org.slug)
 
