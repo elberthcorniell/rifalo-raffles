@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { getSessionHandoffUrl } from '@/lib/auth-handoff'
 import { authErrorMessage } from '@/lib/auth-errors'
+import { requestWelcomeEmail } from '@/lib/emails/request-welcome'
 import { reportSignupCompleted } from '@/lib/signup-completed'
 import { isNewlyCreatedAuthUser } from '@/lib/signup-user'
 import { getRootDomain, slugifyOrgName, isValidSlug } from '@/lib/constants'
@@ -105,6 +106,7 @@ export function CreateRaffleWizard() {
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const logoPreviewRef = useRef<string | null>(null)
+  const justSignedUp = useRef(false)
   const [primaryColor, setPrimaryColor] = useState(DEFAULT_PRIMARY_COLOR)
   const [secondaryColor, setSecondaryColor] = useState(DEFAULT_SECONDARY_COLOR)
   const [theme, setTheme] = useState<OrgTheme>(DEFAULT_ORG_THEME)
@@ -205,6 +207,7 @@ export function CreateRaffleWizard() {
     // confirmation is still pending and there is no session yet.
     // The "already registered" branch above signs in and does not get here.
     if (signData.user && isNewlyCreatedAuthUser(signData.user)) {
+      justSignedUp.current = true
       reportSignupCompleted({ userId: signData.user.id, email })
     }
 
@@ -261,6 +264,10 @@ export function CreateRaffleWizard() {
 
       setPublished(json.data as Published)
       setStep(6)
+      if (justSignedUp.current) {
+        justSignedUp.current = false
+        requestWelcomeEmail()
+      }
     } catch {
       setError('No se pudo publicar la rifa')
     } finally {
