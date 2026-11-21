@@ -133,7 +133,9 @@ El destinatario es el usuario con rol `owner`. Si no se puede leer su correo, se
 
 La cola es `purchases` con `status = 'pending'` (comprobantes esperando confirmación). Los boletos de referido se crean ya confirmados, así que no arrancan el reloj. Si una compra vuelve a `pending`, entra en la cola.
 
-El cron es `GET /api/cron/pending-review-reminders`, cada 15 minutos (`vercel.json`). Solo corre si el header es `Authorization: Bearer <CRON_SECRET>`. Sin `CRON_SECRET` responde 401. Sin `RESEND_API_KEY` responde 200 y no envía.
+El cron es `GET /api/cron/pending-review-reminders` (`vercel.json`). Solo corre si el header es `Authorization: Bearer <CRON_SECRET>`. Sin `CRON_SECRET` responde 401. Sin `RESEND_API_KEY` responde 200 y no envía.
+
+El proyecto está en el plan Hobby de Vercel, que solo acepta un cron al día. La expresión es `0 14 * * *`: todos los días a las 14:00 UTC (10:00 en República Dominicana). La lógica de 1, 2, 4, 8… horas sigue en el código. En cada corrida se manda el paso más alto que ya se cumplió, así que con una corrida diaria el dueño recibe como máximo un correo al día. En un plan que permita crons más seguidos, se puede cambiar esa expresión a `0 * * * *` (cada hora) para acercarse a esos pasos.
 
 Cada corrida revisa como máximo 50 organizaciones, las que ya cumplieron el siguiente paso. La consulta usa el índice de compras pendientes.
 
@@ -143,7 +145,7 @@ El reloj de una organización es `org_review_reminders.queue_started_at`: el `su
 
 Los pasos son 1, 2, 4, 8, 16… horas desde ese inicio (el doble cada vez, hasta 65536). En cada corrida sale como máximo un correo, el del paso más alto que ya se cumplió y todavía no se envió. Si el cron estuvo caído, no se recuperan los pasos intermedios: se manda el último que ya tocaba.
 
-Ejemplo, cola que empieza a las 12:00:
+Si el cron corriera cada hora, una cola que empieza a las 12:00 se avisaría así. Con la corrida diaria de Hobby, esos pasos se juntan en el correo del paso más alto que ya se cumplió:
 
 | Hora | Qué pasa |
 | --- | --- |
@@ -153,7 +155,7 @@ Ejemplo, cola que empieza a las 12:00:
 | 16:00 | tercero (4 horas) |
 | 20:00 | cuarto (8 horas) |
 
-El cron de cada 15 minutos puede atrasar un paso hasta 15 minutos. No manda un correo en cada corrida.
+Con el cron diario, un paso se avisa en la siguiente corrida de las 14:00 UTC después de cumplirse. No manda un correo en cada corrida si el paso siguiente todavía no toca.
 
 `last_step_hours` guarda el último paso enviado. Antes de enviar se reserva ese paso; si Resend no acepta el correo, se suelta la reserva para intentarlo en la siguiente corrida. La clave de idempotencia de Resend incluye la organización, el inicio de la cola y el paso, así un reintento no duplica el mismo aviso.
 

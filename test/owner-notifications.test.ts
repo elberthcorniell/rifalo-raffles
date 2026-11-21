@@ -514,7 +514,7 @@ describe("notification wiring", () => {
     assert.match(route, /process\.env\.CRON_SECRET/);
     assert.equal(route.includes("resend.emails.send"), false);
     assert.match(vercel, /\/api\/cron\/pending-review-reminders/);
-    assert.match(vercel, /\*\/15 \* \* \* \*/);
+    assert.match(vercel, /0 14 \* \* \*/);
   });
 
   it("keeps the reminder clock until the pending queue is empty", () => {
