@@ -11,6 +11,7 @@ import {
   Check,
 } from 'lucide-react'
 import { PlatformHeader } from '@/components/platform/PlatformHeader'
+import { HomeBlogPosts } from '@/components/platform/HomeBlogPosts'
 import { heroCopyForUtms } from '@/lib/hero-copy'
 import { HERO_CTA_HREF, HERO_CTA_LABEL, HERO_EYEBROW } from '@/lib/hero-proof'
 import { getHeroProofLine } from '@/lib/hero-stats'
@@ -490,6 +491,8 @@ export default async function PlatformLandingPage({
             </Link>
           </Button>
         </section>
+
+        <HomeBlogPosts />
       </main>
 
       <footer className="border-t py-8 text-center text-sm text-muted-foreground">

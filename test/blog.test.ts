@@ -13,6 +13,7 @@ import {
   blogCoverPublicPath,
   blogStructuredData,
   isBlogPostVisible,
+  latestPublishedBlogPosts,
   loadBlogPosts,
   marketingSitemapEntries,
   parseBlogSource,
@@ -242,6 +243,23 @@ describe("robots policy", () => {
     const tenantRules = tenant.rules as { disallow?: string }[];
     assert.ok(marketingRules.every((rule) => rule.disallow === "/superadmin"));
     assert.ok(tenantRules.every((rule) => rule.disallow === undefined));
+  });
+});
+
+describe("home blog section", () => {
+  it("keeps the three newest published posts and hides drafts", () => {
+    const posts = [
+      { ...loadBlogPosts()[0], slug: "viejo", date: "2026-01-01", published: true },
+      { ...loadBlogPosts()[0], slug: "borrador", date: "2026-11-21", published: false },
+      { ...loadBlogPosts()[0], slug: "medio", date: "2026-06-01", published: true },
+      { ...loadBlogPosts()[0], slug: "nuevo", date: "2026-11-01", published: true },
+      { ...loadBlogPosts()[0], slug: "cuarto", date: "2026-03-01", published: true },
+    ];
+    assert.deepEqual(
+      latestPublishedBlogPosts(posts).map((post) => post.slug),
+      ["nuevo", "medio", "cuarto"],
+    );
+    assert.deepEqual(latestPublishedBlogPosts(posts.filter((post) => !post.published)), []);
   });
 });
 
