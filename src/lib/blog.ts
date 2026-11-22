@@ -2,7 +2,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { renderLegalMarkdown } from '@/lib/legal-markdown'
 
-export const BLOG_ORIGIN = 'https://rifalo.do'
+/** Canonical marketing origin. Vercel 308s the apex to www. */
+export const BLOG_ORIGIN = 'https://www.rifalo.do'
 export const BLOG_DEFAULT_COVER = '/blog/default-og.png'
 const BLOG_DIR = path.join(process.cwd(), 'content', 'blog')
 

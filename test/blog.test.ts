@@ -237,7 +237,7 @@ describe("robots policy", () => {
 
     const marketing = buildRobots(true);
     const tenant = buildRobots(false);
-    assert.equal(marketing.sitemap, "https://rifalo.do/sitemap.xml");
+    assert.equal(marketing.sitemap, "https://www.rifalo.do/sitemap.xml");
     assert.equal(tenant.sitemap, undefined);
     const marketingRules = marketing.rules as { disallow?: string }[];
     const tenantRules = tenant.rules as { disallow?: string }[];
