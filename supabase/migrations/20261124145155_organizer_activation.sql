@@ -38,7 +38,7 @@ Tu rifa ya está creada. Lo único que falta para que venda es que la gente la v
 
 1. Pon tu link en la bio de Instagram.
 2. Mándaselo a 10 personas que ya te conocen. Abajo te dejo el mensaje listo.
-3. Súbelo a tu status esta noche, que es cuando más se compra.
+3. Súbelo a tu status esta noche, entre las 6 y las 11.
 
 Copia y pega este mensaje:
 
@@ -48,7 +48,7 @@ Cuando te llegue un comprobante, apruébalo rápido. Eso le da confianza al que 
   '{{{contact.first_name|organizador}}}, ¿ya le mandaste tu link a tus primeros 10?',
   $body3$Hola, {{{contact.first_name|organizador}}}.
 
-Tu rifa sigue esperando su primer boleto. Casi siempre lo compra alguien que ya te conoce, así que el paso más fácil es este: manda tu link hoy a 10 personas cercanas y súbelo a tu status esta noche.
+Tu rifa sigue esperando su primer boleto. Lo más fácil es empezar con gente que ya te conoce: manda tu link hoy a 10 personas cercanas y súbelo a tu status esta noche.
 
 Aquí tienes otra vez el mensaje listo:
 
@@ -62,7 +62,7 @@ Tu rifa ya está creada. Lo único que falta para que venda es que la gente la v
 
 1. Pon tu link en la bio de Instagram.
 2. Mándaselo a 10 personas que ya te conocen. Abajo te dejo el mensaje listo.
-3. Súbelo a tu status esta noche, que es cuando más se compra.
+3. Súbelo a tu status esta noche, entre las 6 y las 11.
 
 Copia y pega este mensaje:
 

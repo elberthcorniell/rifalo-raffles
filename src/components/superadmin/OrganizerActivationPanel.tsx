@@ -107,6 +107,7 @@ export function OrganizerActivationPanel({ initial }: { initial?: ActivationView
     subject,
     body,
     mode: 'personal',
+    campaign: 'activacion_broadcast',
     firstName: ACTIVATION_PREVIEW.firstName,
     raffleLink: ACTIVATION_PREVIEW.raffleLink,
     unsubscribeUrl: 'https://www.rifalo.do/baja',

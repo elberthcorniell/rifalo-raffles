@@ -15,10 +15,11 @@ import {
   decideClaim,
   organizerRaffleLink,
   previewOrganizerSync,
+  ticketSaleActivity,
   toResendContactBody,
   type OrganizerInput,
 } from "../src/lib/activation-contacts.ts";
-import { buildActivationEmail } from "../src/lib/activation-email.ts";
+import { buildActivationEmail, withActivationUtms } from "../src/lib/activation-email.ts";
 import {
   createResendApi,
   parseBroadcastList,
@@ -46,6 +47,7 @@ function organizer(overrides: Partial<OrganizerInput> = {}): OrganizerInput {
         createdAt: "2026-11-20T00:00:00.000Z",
         hasActiveRaffle: true,
         ticketsSold: 0,
+        pendingReceipts: 0,
       },
     ],
     ...overrides,
@@ -219,6 +221,16 @@ describe("day-1 and day-3 eligibility", () => {
     );
     assert.deepEqual(sold, { day1: false, day3: false });
 
+    const pending = activationTargets(
+      organizer({
+        signupAt: hoursAgo(24 * 4),
+        orgs: organizer().orgs.map((org) => ({ ...org, ticketsSold: 0, pendingReceipts: 2 })),
+      }),
+      [],
+      NOW,
+    );
+    assert.deepEqual(pending, { day1: false, day3: false });
+
     const tooLate = activationTargets(organizer({ signupAt: hoursAgo(24 * 6) }), [], NOW);
     assert.deepEqual(tooLate, { day1: false, day3: false });
 
@@ -268,13 +280,18 @@ describe("activation copy", () => {
     assert.equal(activationCopyIssues(ACTIVATION_DAY1_BODY).length, 0);
     assert.equal(activationCopyIssues(ACTIVATION_DAY3_SUBJECT).length, 0);
     assert.equal(activationCopyIssues(ACTIVATION_DAY3_BODY).length, 0);
+    assert.match(ACTIVATION_DAY1_BODY, /entre las 6 y las 11/);
+    assert.doesNotMatch(ACTIVATION_DAY1_BODY, /cuando más se compra/);
     assert.match(ACTIVATION_DAY3_SUBJECT, /primeros 10/);
+    assert.match(ACTIVATION_DAY3_BODY, /Lo más fácil es empezar con gente que ya te conoce/);
+    assert.doesNotMatch(ACTIVATION_DAY3_BODY, /Casi siempre lo compra/);
     assert.match(ACTIVATION_DAY3_BODY, /Responde este email/);
 
     const personal = buildActivationEmail({
       subject: "{nombre}, tu rifa",
       body: ACTIVATION_DAY1_BODY,
       mode: "personal",
+      campaign: "activacion_d1",
       firstName: "Ana",
       raffleLink: "https://ana.rifalo.do",
       unsubscribeUrl: "https://www.rifalo.do/baja?token=abc",
@@ -290,12 +307,72 @@ describe("activation copy", () => {
       subject: ACTIVATION_DAY1_SUBJECT,
       body: "Hola, {{{FIRST_NAME}}}. Link: [link]",
       mode: "broadcast",
+      campaign: "activacion_broadcast",
       unsubscribeUrl: "{{{RESEND_UNSUBSCRIBE_URL}}}",
     });
     assert.match(broadcast.html, /\{\{\{contact\.first_name\|organizador\}\}\}/);
     assert.match(broadcast.html, /\{\{\{raffle_link\}\}\}/);
-    assert.match(broadcast.html, /href="\{\{\{raffle_link\}\}\}"/);
+    assert.equal(
+      broadcast.html.includes(
+        'href="{{{raffle_link}}}?utm_source=email&amp;utm_medium=resend&amp;utm_campaign=activacion_broadcast"',
+      ),
+      true,
+    );
     assert.doesNotMatch(broadcast.html, /Ana/);
+  });
+
+  it("puts email UTMs only on the Ver mi rifa button", () => {
+    assert.equal(
+      withActivationUtms("https://ana.rifalo.do", "activacion_d3"),
+      "https://ana.rifalo.do?utm_source=email&utm_medium=resend&utm_campaign=activacion_d3",
+    );
+    assert.equal(
+      withActivationUtms("https://ana.rifalo.do?ref=ig", "activacion_d1"),
+      "https://ana.rifalo.do?ref=ig&utm_source=email&utm_medium=resend&utm_campaign=activacion_d1",
+    );
+    assert.equal(
+      withActivationUtms("https://ana.rifalo.do/rifa?ref=ig#boletos", "activacion_broadcast"),
+      "https://ana.rifalo.do/rifa?ref=ig&utm_source=email&utm_medium=resend&utm_campaign=activacion_broadcast#boletos",
+    );
+
+    const email = buildActivationEmail({
+      subject: ACTIVATION_DAY1_SUBJECT,
+      body: ACTIVATION_DAY1_BODY,
+      mode: "personal",
+      campaign: "activacion_d1",
+      firstName: "Ana",
+      raffleLink: "https://ana.rifalo.do?ref=ig",
+    });
+    assert.match(email.html, /href="https:\/\/ana\.rifalo\.do\?ref=ig&amp;utm_source=email&amp;utm_medium=resend&amp;utm_campaign=activacion_d1"/);
+    assert.match(email.html, /aquí: https:\/\/ana\.rifalo\.do\?ref=ig\./);
+    assert.doesNotMatch(email.html, /aquí: https:\/\/ana\.rifalo\.do\?ref=ig&amp;utm_/);
+    assert.match(email.text, /Ver mi rifa: https:\/\/ana\.rifalo\.do\?ref=ig&utm_source=email/);
+    const quote = email.text.match(/"¡Hola![\s\S]*?"/);
+    assert.ok(quote);
+    assert.match(quote[0], /https:\/\/ana\.rifalo\.do\?ref=ig/);
+    assert.doesNotMatch(quote[0], /utm_source/);
+  });
+
+  it("counts a reserved ticket with a receipt as activity, and keeps sold separate", () => {
+    assert.equal(ticketSaleActivity({ status: "sold", voucherPath: "vouchers/a.jpg" }), "sold");
+    assert.equal(ticketSaleActivity({ status: "sold", voucherPath: null }), "sold");
+    assert.equal(ticketSaleActivity({ status: "reserved", voucherPath: "vouchers/pending.jpg" }), "pending_receipt");
+    assert.equal(ticketSaleActivity({ status: "reserved", voucherPath: "  " }), "none");
+    assert.equal(ticketSaleActivity({ status: "reserved", voucherPath: null }), "none");
+    assert.equal(ticketSaleActivity({ status: "available" }), "none");
+
+    const waiting = classifyOrganizer(
+      organizer({
+        orgs: organizer().orgs.map((org) => ({ ...org, ticketsSold: 0, pendingReceipts: 3 })),
+      }),
+    );
+    assert.equal(waiting.action, "sync");
+    if (waiting.action !== "sync") return;
+    assert.equal(waiting.contact.ticketsSold, 0);
+    assert.equal(waiting.contact.hasFirstSale, true);
+    assert.equal(waiting.contact.noSales, false);
+    assert.equal(toResendContactBody(waiting.contact).properties.tickets_sold, 0);
+    assert.equal(toResendContactBody(waiting.contact).properties.has_first_sale, "true");
   });
 
   it("reads broadcast status and unique open and click totals", () => {

@@ -1,5 +1,26 @@
 import { ACTIVATION_BUTTON_LABEL } from '@/lib/activation-copy'
 
+export type ActivationUtmCampaign = 'activacion_d1' | 'activacion_d3' | 'activacion_broadcast'
+
+/**
+ * Query string for the "Ver mi rifa" button only. The raffle link inside the
+ * message organizers paste to their contacts stays without these params.
+ */
+export function withActivationUtms(url: string, campaign: ActivationUtmCampaign): string {
+  const trimmed = url.trim()
+  if (!trimmed) return trimmed
+  const hashAt = trimmed.indexOf('#')
+  const hash = hashAt >= 0 ? trimmed.slice(hashAt) : ''
+  const withoutHash = hashAt >= 0 ? trimmed.slice(0, hashAt) : trimmed
+  const queryAt = withoutHash.indexOf('?')
+  const base = queryAt >= 0 ? withoutHash.slice(0, queryAt) : withoutHash
+  const params = new URLSearchParams(queryAt >= 0 ? withoutHash.slice(queryAt + 1) : '')
+  params.set('utm_source', 'email')
+  params.set('utm_medium', 'resend')
+  params.set('utm_campaign', campaign)
+  return `${base}?${params.toString()}${hash}`
+}
+
 const TOKEN = /\{\{\{[^{}]+\}\}\}/g
 const FIRST_NAME_TOKEN = /\{\{\{(?:contact\.first_name(?:\|[^}]+)?|FIRST_NAME)\}\}\}/g
 const RAFFLE_TOKEN = /\{\{\{(?:raffle_link(?:\|[^}]+)?|RAFFLE_LINK)\}\}\}/g
@@ -25,6 +46,7 @@ export function buildActivationEmail(input: {
   subject: string
   body: string
   mode: 'broadcast' | 'personal'
+  campaign: ActivationUtmCampaign
   firstName?: string
   raffleLink?: string
   unsubscribeUrl?: string
@@ -37,7 +59,11 @@ export function buildActivationEmail(input: {
 
   const subject = personal ? fillTokens(subjectSource, firstName, raffleLink) : subjectSource
   const prose = personal ? fillTokens(bodySource, firstName, raffleLink) : bodySource
-  const buttonHref = personal ? httpUrl(raffleLink) : '{{{raffle_link}}}'
+  const buttonHref = personal
+    ? httpUrl(raffleLink)
+      ? withActivationUtms(raffleLink, input.campaign)
+      : null
+    : withActivationUtms('{{{raffle_link}}}', input.campaign)
   const unsubscribe = input.unsubscribeUrl?.trim() || ''
 
   return {

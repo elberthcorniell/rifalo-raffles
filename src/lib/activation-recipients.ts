@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { countSoldTicketsByOrg } from '@/lib/blog-recipients'
+import { countTicketActivityByOrg } from '@/lib/blog-recipients'
 import { normalizeBlogEmail } from '@/lib/blog-audience'
 import type { OrganizerInput } from '@/lib/activation-contacts'
 
@@ -58,7 +58,7 @@ export async function loadOrganizerInputs(admin: Admin): Promise<OrganizerInput[
     ),
   ])
 
-  const soldByOrg = await countSoldTicketsByOrg(admin, raffles)
+  const activityByOrg = await countTicketActivityByOrg(admin, raffles)
   const activeOrgs = new Set(raffles.map((row) => row.org_id))
   const orgsById = new Map(orgs.map((org) => [org.id, org]))
   const orgsByUser = new Map<string, OrganizerInput['orgs']>()
@@ -73,7 +73,8 @@ export async function loadOrganizerInputs(admin: Admin): Promise<OrganizerInput[
       customDomain: org.custom_domain,
       createdAt: org.created_at || '',
       hasActiveRaffle: activeOrgs.has(org.id),
-      ticketsSold: soldByOrg.get(org.id) || 0,
+      ticketsSold: activityByOrg.get(org.id)?.sold || 0,
+      pendingReceipts: activityByOrg.get(org.id)?.pendingReceipts || 0,
     })
     orgsByUser.set(member.user_id, list)
   }

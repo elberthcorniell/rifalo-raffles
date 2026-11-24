@@ -236,6 +236,7 @@ export async function saveBroadcastDraft(
     subject: input.subject,
     body: input.body,
     mode: 'broadcast',
+    campaign: 'activacion_broadcast',
     unsubscribeUrl: '{{{RESEND_UNSUBSCRIBE_URL}}}',
   })
   const payload = broadcastRequestBody({
@@ -278,6 +279,7 @@ export async function sendActivationTest(input: {
     subject: input.subject,
     body: input.body,
     mode: 'personal',
+    campaign: 'activacion_broadcast',
     firstName: 'Ana',
     raffleLink: 'https://ana.rifalo.do',
     unsubscribeUrl: `${BLOG_ORIGIN}/baja`,
@@ -390,6 +392,7 @@ export async function runOrganizerActivation(
       subject: template.subject,
       body: template.body,
       mode: 'personal',
+      campaign: item.kind === 'day1' ? 'activacion_d1' : 'activacion_d3',
       firstName: contact.firstName,
       raffleLink: contact.raffleLink,
       unsubscribeUrl: unsubscribePage || undefined,

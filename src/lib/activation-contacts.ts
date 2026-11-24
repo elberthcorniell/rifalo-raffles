@@ -26,7 +26,10 @@ export type OrganizerOrgInput = {
   customDomain: string | null
   createdAt: string
   hasActiveRaffle: boolean
+  /** Confirmed tickets only (status sold). */
   ticketsSold: number
+  /** Reserved tickets whose purchase already has a payment receipt. */
+  pendingReceipts: number
 }
 
 export type OrganizerInput = {
@@ -111,7 +114,9 @@ export function classifyOrganizer(input: OrganizerInput, rootDomain = 'rifalo.do
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   const chosen = pool[0]
   const ticketsSold = active.reduce((sum, org) => sum + Math.max(0, org.ticketsSold || 0), 0)
+  const pendingReceipts = active.reduce((sum, org) => sum + Math.max(0, org.pendingReceipts || 0), 0)
   const hasPublishedRaffle = active.length > 0
+  const hasFirstSale = ticketsSold > 0 || pendingReceipts > 0
   const signupAt = input.signupAt || ''
 
   return {
@@ -124,12 +129,26 @@ export function classifyOrganizer(input: OrganizerInput, rootDomain = 'rifalo.do
       raffleLink: organizerRaffleLink(chosen, rootDomain),
       hasPublishedRaffle,
       ticketsSold,
-      hasFirstSale: ticketsSold > 0,
+      hasFirstSale,
       signupDate: signupDate(signupAt),
       signupAt,
-      noSales: hasPublishedRaffle && ticketsSold === 0,
+      noSales: hasPublishedRaffle && !hasFirstSale,
     },
   }
+}
+
+/**
+ * A pending comprobante reserves tickets and stores the receipt on the purchase.
+ * Referral rewards are created already sold and have no voucher, so a reserved
+ * ticket without a receipt is not a first sale.
+ */
+export function ticketSaleActivity(ticket: {
+  status: string
+  voucherPath?: string | null
+}): 'sold' | 'pending_receipt' | 'none' {
+  if (ticket.status === 'sold') return 'sold'
+  if (ticket.status === 'reserved' && Boolean(ticket.voucherPath?.trim())) return 'pending_receipt'
+  return 'none'
 }
 
 export function previewOrganizerSync(inputs: OrganizerInput[], rootDomain = 'rifalo.do'): SyncPreview {
@@ -202,7 +221,7 @@ export function activationTargets(
   const day3 =
     age >= ACTIVATION_DAY3_MIN_MS &&
     age < ACTIVATION_DAY3_MAX_MS &&
-    decision.contact.ticketsSold === 0 &&
+    !decision.contact.hasFirstSale &&
     !sendBlocks(records, 'day3', now)
   return { day1, day3 }
 }

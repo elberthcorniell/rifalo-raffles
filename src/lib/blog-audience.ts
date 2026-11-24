@@ -28,8 +28,10 @@ export type AudienceOrg = {
   plan: string
   stripeStatus: string | null
   hasActiveRaffle: boolean
-  /** Sold tickets on this org's active raffles. */
+  /** Confirmed tickets (status sold) on this org's active raffles. */
   ticketsSold: number
+  /** Reserved tickets tied to a purchase that already has a payment receipt. */
+  pendingReceipts: number
 }
 
 export type AudienceUser = {
@@ -124,7 +126,12 @@ export function classifyBlogAudiences(
     if (published) buckets.push('published')
     if (paying) buckets.push('paying')
     else buckets.push('free')
-    if (published && active.every((org) => org.ticketsSold === 0)) buckets.push('no_sales')
+    if (
+      published &&
+      active.every((org) => (org.ticketsSold || 0) === 0 && (org.pendingReceipts || 0) === 0)
+    ) {
+      buckets.push('no_sales')
+    }
 
     const recipient = { userId: user.id, email }
     const blocked = opts.blockedEmails.has(email)
