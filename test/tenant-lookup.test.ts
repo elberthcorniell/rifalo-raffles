@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { readTenantRow, TenantLookupError } from "../src/lib/tenant-lookup.ts";
+import { readTenantRow, TenantLookupError, TENANT_UNAVAILABLE_BODY } from "../src/lib/tenant-lookup.ts";
 
 describe("readTenantRow", () => {
   it("returns the row when Supabase answers", () => {
@@ -19,5 +19,15 @@ describe("readTenantRow", () => {
       () => readTenantRow({ data: null, error: { message: "Payment Required", code: "" }, status: 402 }),
       (error: unknown) => error instanceof TenantLookupError && error.status === 402
     );
+  });
+});
+
+describe("TENANT_UNAVAILABLE_BODY", () => {
+  it("is brand agnostic and self-contained", () => {
+    assert.ok(!/rifalo/i.test(TENANT_UNAVAILABLE_BODY));
+    assert.ok(!/https?:|src=|href=|url\(/i.test(TENANT_UNAVAILABLE_BODY));
+    assert.match(TENANT_UNAVAILABLE_BODY, /<html lang="es">/);
+    assert.match(TENANT_UNAVAILABLE_BODY, /<meta name="robots" content="noindex">/);
+    assert.match(TENANT_UNAVAILABLE_BODY, /Sitio temporalmente no disponible/);
   });
 });

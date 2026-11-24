@@ -316,7 +316,7 @@ export async function updateSession(request: NextRequest) {
       return new NextResponse(TENANT_UNAVAILABLE_BODY, {
         status: 503,
         headers: {
-          'content-type': 'text/plain; charset=utf-8',
+          'content-type': 'text/html; charset=utf-8',
           'cache-control': 'no-store',
           'retry-after': '60',
         },
