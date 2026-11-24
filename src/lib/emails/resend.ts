@@ -8,6 +8,7 @@ export type OutboundEmail = {
   html: string
   text: string
   idempotencyKey: string
+  headers?: Record<string, string>
 }
 
 /**
@@ -38,6 +39,7 @@ export async function sendResendEmail(
         html: message.html,
         text: message.text,
         replyTo: message.replyTo,
+        ...(message.headers ? { headers: message.headers } : {}),
       },
       { idempotencyKey: message.idempotencyKey },
     )

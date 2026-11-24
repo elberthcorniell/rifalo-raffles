@@ -166,34 +166,40 @@ describe("blog audience", () => {
       id: "cura-only",
       email: "cura@rifalo.do",
       emailConfirmed: true,
-      orgs: [{ slug: "cura", plan: "plus", stripeStatus: "active", hasActiveRaffle: true }],
+      orgs: [{ slug: "cura", plan: "plus", stripeStatus: "active", hasActiveRaffle: true, ticketsSold: 0 }],
     },
     {
       id: "real-free",
       email: "libre@rifalo.do",
       emailConfirmed: true,
       orgs: [
-        { slug: "test", plan: "unlimited", stripeStatus: "active", hasActiveRaffle: true },
-        { slug: "real", plan: "free", stripeStatus: null, hasActiveRaffle: true },
+        { slug: "test", plan: "unlimited", stripeStatus: "active", hasActiveRaffle: true, ticketsSold: 9 },
+        { slug: "real", plan: "free", stripeStatus: null, hasActiveRaffle: true, ticketsSold: 0 },
       ],
     },
     {
       id: "unverified",
       email: "nuevo@rifalo.do",
       emailConfirmed: false,
-      orgs: [{ slug: "real", plan: "plus", stripeStatus: "active", hasActiveRaffle: true }],
+      orgs: [{ slug: "real", plan: "plus", stripeStatus: "active", hasActiveRaffle: true, ticketsSold: 0 }],
     },
     {
       id: "paying",
       email: "plus@rifalo.do",
       emailConfirmed: true,
-      orgs: [{ slug: "real", plan: "plus", stripeStatus: "active", hasActiveRaffle: false }],
+      orgs: [{ slug: "real", plan: "plus", stripeStatus: "active", hasActiveRaffle: false, ticketsSold: 4 }],
     },
     {
       id: "unsubscribed",
       email: "baja@rifalo.do",
       emailConfirmed: true,
-      orgs: [{ slug: "real", plan: "free", stripeStatus: null, hasActiveRaffle: false }],
+      orgs: [{ slug: "real", plan: "free", stripeStatus: null, hasActiveRaffle: false, ticketsSold: 0 }],
+    },
+    {
+      id: "selling",
+      email: "vende@rifalo.do",
+      emailConfirmed: true,
+      orgs: [{ slug: "vende", plan: "free", stripeStatus: null, hasActiveRaffle: true, ticketsSold: 3 }],
     },
   ];
 
@@ -206,10 +212,11 @@ describe("blog audience", () => {
       unsubscribed: new Set(["baja@rifalo.do"]),
       blockedEmails: new Set(),
     });
-    assert.deepEqual(counts.all.willSend.map((row) => row.userId), ["real-free", "paying"]);
-    assert.deepEqual(counts.published.willSend.map((row) => row.userId), ["real-free"]);
+    assert.deepEqual(counts.all.willSend.map((row) => row.userId), ["real-free", "paying", "selling"]);
+    assert.deepEqual(counts.published.willSend.map((row) => row.userId), ["real-free", "selling"]);
     assert.deepEqual(counts.paying.willSend.map((row) => row.userId), ["paying"]);
-    assert.deepEqual(counts.free.willSend.map((row) => row.userId), ["real-free"]);
+    assert.deepEqual(counts.free.willSend.map((row) => row.userId), ["real-free", "selling"]);
+    assert.deepEqual(counts.no_sales.willSend.map((row) => row.userId), ["real-free"]);
   });
 
   it("does not send the same post again while a delivery is sent or in flight", () => {

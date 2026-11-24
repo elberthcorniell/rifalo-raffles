@@ -168,3 +168,19 @@ Cuando la cola queda en cero, un trigger borra la fila de `org_review_reminders`
 La migración es `20261121130914_owner_review_notifications.sql`. No edita migraciones ya aplicadas. Hay que aplicarla en Supabase antes de que estos correos funcionen en ese proyecto.
 
 El botón del recordatorio abre `/admin/purchases`. El texto dice cuántas compras siguen pendientes y desde hace cuántas horas, como mínimo, espera la más antigua.
+
+## 7. Activación de organizadores
+
+En `/superadmin/blog`, la pestaña **Activación** sincroniza organizadores a contactos de Resend, guarda un broadcast y deja preparados los correos del día 1 y del día 3. El interruptor nace apagado. Mientras esté apagado, el cron no envía esos correos.
+
+Resend tiene una API de Automations, pero el día 3 tiene que mirar los boletos vendidos en Supabase en el momento del envío. Una automation solo ve las propiedades del contacto, que se quedan viejas hasta el próximo sync. Por eso el envío lo hace el cron diario que ya existe (`0 14 * * *`, un solo cron porque el plan Hobby no acepta otro). La ruta `/api/cron/organizer-activation` usa el mismo `CRON_SECRET` si hace falta llamarla a mano.
+
+Variables nuevas, además de `RESEND_API_KEY`, `EMAIL_FROM` y `CRON_SECRET`:
+
+| Nombre | Para qué |
+| --- | --- |
+| `RESEND_SEGMENT_NO_SALES_ID` | Segmento de organizadores con rifa activa y 0 boletos vendidos. Hay que crearlo en Resend. |
+| `RESEND_SEGMENT_ORGANIZERS_ID` | Segmento de todos los organizadores sincronizados. |
+| `EMAIL_REPLY_TO` | Ya existía. Si está vacío, las respuestas van al remitente. |
+
+La migración es `20261124145155_organizer_activation.sql`. Hay que aplicarla antes de guardar textos o encender el interruptor. No envía correos por sí sola.
