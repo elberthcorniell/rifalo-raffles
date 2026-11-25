@@ -59,6 +59,10 @@ describe("blog publish filter and sitemap", () => {
       "/",
       "/signup",
       "/blog",
+      "/blog/como-dar-confianza-en-tu-rifa",
+      "/blog/como-hacer-una-rifa-online",
+      "/blog/como-promocionar-una-rifa-por-whatsapp-e-instagram",
+      "/blog/mejor-hora-y-dia-para-vender-boletos-de-rifa",
       "/blog/como-vender-boletos-de-rifa",
     ]);
     assert.deepEqual(
@@ -117,7 +121,7 @@ describe("blog publish filter and sitemap", () => {
 });
 
 describe("blog email", () => {
-  const post = loadBlogPosts()[0];
+  const post = loadBlogPosts().find((p) => p.slug === "como-vender-boletos-de-rifa")!;
 
   it("uses the short email body, both calls to action, and UTMs", () => {
     const email = buildBlogEmail({
