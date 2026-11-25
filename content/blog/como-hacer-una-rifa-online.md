@@ -1,8 +1,8 @@
 ---
 slug: como-hacer-una-rifa-online
 seoTitle: Cómo hacer una rifa online paso a paso en RD
-h1: Cómo hacer una rifa online paso a paso, desde el permiso hasta el sorteo
-metaDescription: Guía para organizar tu rifa online en República Dominicana: el permiso, el premio, los boletos, la cuenta para cobrar, los comprobantes y el sorteo.
+h1: Cómo hacer una rifa online paso a paso, desde el premio hasta el sorteo
+metaDescription: Guía para organizar tu rifa online en República Dominicana: el premio, los boletos, la cuenta para cobrar, los comprobantes y el sorteo.
 date: 2026-11-25
 published: false
 coverImage: /blog/como-hacer-una-rifa-online/cover.png
@@ -10,8 +10,6 @@ coverAlt: Portada de Rifalo con el logo, la etiqueta Blog y el título de la not
 faq:
   - q: ¿Cuánto cuesta hacer una rifa online en Rifalo?
     a: Crear tu cuenta es gratis y no pide tarjeta. El plan gratis incluye hasta 250 boletos al mes. La tarjeta solo se pide si pasas a Plus o Unlimited.
-  - q: ¿Necesito permiso para hacer una rifa en República Dominicana?
-    a: La Ley 86-26 dice que las rifas se hacen con una licencia del Consejo de Juegos de Azar. Pregunta en la DGJA qué te piden para tu caso.
   - q: ¿Cómo me pagan los compradores?
     a: Te transfieren directo a tu cuenta y suben el comprobante en tu rifa. Tú lo apruebas desde tu panel.
   - q: ¿Cuántos boletos puede comprar una persona?
@@ -22,28 +20,21 @@ ctaTitle: Tu rifa online puede estar publicada hoy.
 ctaText: Crea tu cuenta en Rifalo, arma tu rifa con tu nombre y tus paquetes, y comparte tu link. Tus compradores suben el comprobante y tú lo apruebas en un solo lugar.
 ctaButton: Crear mi cuenta gratis
 ctaHref: /signup
-methodNote: Datos de PostHog y Supabase de Rifalo. Celular: 4,178 visitantes del organizador de alto volumen y 209 visitantes de otras rifas. Compras grandes: 341 compras confirmadas del organizador de alto volumen. Es un solo caso, no una regla general. Ley 86-26, Gaceta Oficial núm. 11263 del 2 de octubre de 2026, artículos 112 y 113.
+methodNote: Datos de PostHog y Supabase de Rifalo. Celular: 4,178 visitantes del organizador de alto volumen y 209 visitantes de otras rifas. Compras grandes: 341 compras confirmadas del organizador de alto volumen. Es un solo caso, no una regla general.
 emailSubjects:
   - Tu rifa online, paso a paso
   - Antes de vender tu primer boleto, mira esto
   - 11 pasos para publicar tu rifa hoy
-emailPreviewText: Del permiso al sorteo: cómo armar tu rifa online en Rifalo.
+emailPreviewText: Del premio al sorteo: cómo armar tu rifa online en Rifalo.
 emailButtonLabel: Ver los 11 pasos
 emailBody: |
-  Armamos una guía con todo lo que necesitas para hacer tu rifa online, en orden. Tres cosas para empezar hoy:
+  Armamos una guía con todo lo que necesitas para hacer tu rifa online, en orden. Dos cosas para empezar hoy:
 
-  - Pregunta en la DGJA qué permiso necesitas antes de vender.
   - Sube una foto real del premio que se vea bien en el celular. El 98.9% de los visitantes de un organizador de alto volumen entró desde el teléfono.
   - Crea al menos un paquete de boletos para quien quiere comprar varios.
 ---
 
-Hacer una rifa online no es solo subir un flyer. Hay que pensar en el permiso, el premio, cuántos boletos vas a vender, cómo te van a pagar y cómo vas a escoger al ganador. Aquí va todo, en orden, con los pasos que haces en Rifalo y lo que vimos en los datos de un organizador de alto volumen.
-
-## Antes de empezar: averigua qué permiso necesitas
-
-Desde octubre de 2026, la [Ley 86-26](https://consultoria.gov.do/api/document/3406364) regula los juegos de azar en República Dominicana. Su artículo 112 dice que las rifas, benéficas o no, las hacen personas o empresas con una licencia del Consejo de Juegos de Azar, por el tiempo que dure la rifa. El artículo 113 dice que los requisitos y la tasa los fija ese Consejo por resolución.
-
-Qué hacer: antes de vender, pregunta en la [Dirección General de Juegos de Azar (DGJA)](https://dgja.gob.do) qué te piden para tu rifa. Esta guía no es asesoría legal.
+Hacer una rifa online no es solo subir un flyer. Hay que pensar en el premio, cuántos boletos vas a vender, cómo te van a pagar y cómo vas a escoger al ganador. Aquí va todo, en orden, con los pasos que haces en Rifalo y lo que vimos en los datos de un organizador de alto volumen.
 
 ## Paso 1: Define el premio, el precio y la cantidad de boletos
 
@@ -109,11 +100,10 @@ Qué hacer: sigue la guía para [promocionar tu rifa por WhatsApp e Instagram](/
 
 En Rifalo, el ganador lo escoges tú, con el método que tú decidas. Rifalo no hace el sorteo.
 
-Qué hacer: haz el sorteo como lo dijiste al principio y según lo que te pida tu licencia. Hazlo en vivo y publica el resultado y la entrega del premio.
+Qué hacer: haz el sorteo como lo dijiste al principio. Hazlo en vivo y publica el resultado y la entrega del premio.
 
 ## Checklist
 
-- Permiso consultado con la DGJA
 - Premio, precio y cantidad de boletos definidos
 - Foto real del premio que se vea en el celular
 - Fecha de cierre que puedas cumplir
