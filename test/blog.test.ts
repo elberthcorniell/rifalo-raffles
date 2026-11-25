@@ -59,6 +59,10 @@ describe("blog publish filter and sitemap", () => {
       "/",
       "/signup",
       "/blog",
+      "/blog/como-dar-confianza-en-tu-rifa",
+      "/blog/como-hacer-una-rifa-online",
+      "/blog/como-promocionar-una-rifa-por-whatsapp-e-instagram",
+      "/blog/mejor-hora-y-dia-para-vender-boletos-de-rifa",
       "/blog/como-vender-boletos-de-rifa",
     ]);
     assert.deepEqual(
