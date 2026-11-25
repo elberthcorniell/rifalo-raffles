@@ -4,7 +4,7 @@ seoTitle: Cómo promocionar una rifa por WhatsApp e Instagram
 h1: Cómo promocionar tu rifa por WhatsApp e Instagram, con mensajes listos para copiar
 metaDescription: Dónde poner tu link, qué subir a tus historias y qué mensaje mandar por WhatsApp. Con datos de un organizador de alto volumen en Rifalo.
 date: 2026-11-25
-published: false
+published: true
 coverImage: /blog/como-promocionar-una-rifa-por-whatsapp-e-instagram/cover.png
 coverAlt: Portada de Rifalo con el logo, la etiqueta Blog y el título de la nota.
 faq:

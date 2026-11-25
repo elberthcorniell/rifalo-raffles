@@ -4,7 +4,7 @@ seoTitle: Mejor hora y día para vender boletos de rifa en RD
 h1: La mejor hora y el mejor día para vender boletos de rifa, según los datos
 metaDescription: '¿Cuándo compartir tu rifa? Miramos los datos de la rifa más activa en Rifalo: a qué hora entra la gente, qué día compra más y cómo armar tu semana.'
 date: 2026-11-25
-published: false
+published: true
 coverImage: /blog/mejor-hora-y-dia-para-vender-boletos-de-rifa/cover.png
 coverAlt: Portada de Rifalo con el logo, la etiqueta Blog, el título de la nota y el dato de que el 42% de las visitas llegó entre 6 y 11 de la noche.
 faq:

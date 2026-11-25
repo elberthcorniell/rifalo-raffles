@@ -4,7 +4,7 @@ seoTitle: Cómo hacer una rifa online paso a paso en RD
 h1: Cómo hacer una rifa online paso a paso, desde el premio hasta el sorteo
 metaDescription: Guía para organizar tu rifa online en República Dominicana: el premio, los boletos, la cuenta para cobrar, los comprobantes y el sorteo.
 date: 2026-11-25
-published: false
+published: true
 coverImage: /blog/como-hacer-una-rifa-online/cover.png
 coverAlt: Portada de Rifalo con el logo, la etiqueta Blog y el título de la nota.
 faq:

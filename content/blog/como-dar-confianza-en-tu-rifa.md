@@ -4,7 +4,7 @@ seoTitle: Cómo dar confianza en tu rifa y que no piensen que está arreglada
 h1: Cómo dar confianza en tu rifa para que nadie piense que está arreglada
 metaDescription: '"¿Y eso no está arreglado?" Es una de las dudas que más frenan una compra. Así puedes mostrarle a tu comprador que tu rifa es transparente, paso a paso.'
 date: 2026-11-25
-published: false
+published: true
 coverImage: /blog/como-dar-confianza-en-tu-rifa/cover.png
 coverAlt: Portada de Rifalo con el logo, la etiqueta Blog, el título de la nota y el dato de que 95 de cada 100 comprobantes enviados terminaron aprobados.
 faq:
