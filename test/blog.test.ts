@@ -117,7 +117,7 @@ describe("blog publish filter and sitemap", () => {
 });
 
 describe("blog email", () => {
-  const post = loadBlogPosts()[0];
+  const post = loadBlogPosts().find((p) => p.slug === "como-vender-boletos-de-rifa")!;
 
   it("uses the short email body, both calls to action, and UTMs", () => {
     const email = buildBlogEmail({
