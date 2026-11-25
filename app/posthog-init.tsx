@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import posthog from "posthog-js";
-import { createClient } from "@/lib/supabase/client";
+import { createClient, hasSupabaseBrowserConfig } from "@/lib/supabase/client";
 import { rememberLandingUtms } from "@/lib/landing-utm";
 
 export function PostHogInit() {
@@ -10,7 +10,8 @@ export function PostHogInit() {
 
   useEffect(() => {
     rememberLandingUtms(window.location.search);
-    if (!posthog.__loaded) return;
+    // Without Supabase env (Vercel previews), createClient() throws and takes down every page.
+    if (!posthog.__loaded || !hasSupabaseBrowserConfig()) return;
 
     const supabase = createClient();
     const { data: authSubscription } = supabase.auth.onAuthStateChange(
