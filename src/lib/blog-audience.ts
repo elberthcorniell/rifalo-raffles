@@ -6,7 +6,7 @@ export const BLOG_EMAIL_EXCLUDED_ORG_SLUGS = [
   'cura',
 ] as const
 
-export const BLOG_AUDIENCE_IDS = ['all', 'published', 'paying', 'free'] as const
+export const BLOG_AUDIENCE_IDS = ['all', 'published', 'paying', 'free', 'no_sales'] as const
 
 export type BlogAudienceId = (typeof BLOG_AUDIENCE_IDS)[number]
 
@@ -15,6 +15,7 @@ export const BLOG_AUDIENCE_LABELS: Record<BlogAudienceId, string> = {
   published: 'Con una rifa publicada',
   paying: 'Planes de pago',
   free: 'Solo plan gratis',
+  no_sales: 'Con rifa activa y 0 boletos vendidos',
 }
 
 /** A pending row newer than this is treated as an in-flight send. */
@@ -27,6 +28,10 @@ export type AudienceOrg = {
   plan: string
   stripeStatus: string | null
   hasActiveRaffle: boolean
+  /** Confirmed tickets (status sold) on this org's active raffles. */
+  ticketsSold: number
+  /** Reserved tickets tied to a purchase that already has a payment receipt. */
+  pendingReceipts: number
 }
 
 export type AudienceUser = {
@@ -90,6 +95,7 @@ function emptyCounts(): BlogAudienceCounts {
     published: { willSend: [], alreadySent: 0 },
     paying: { willSend: [], alreadySent: 0 },
     free: { willSend: [], alreadySent: 0 },
+    no_sales: { willSend: [], alreadySent: 0 },
   }
 }
 
@@ -114,11 +120,18 @@ export function classifyBlogAudiences(
     seen.add(email)
 
     const paying = orgs.some(isPayingOrg)
-    const published = orgs.some((org) => org.hasActiveRaffle)
+    const active = orgs.filter((org) => org.hasActiveRaffle)
+    const published = active.length > 0
     const buckets: BlogAudienceId[] = ['all']
     if (published) buckets.push('published')
     if (paying) buckets.push('paying')
     else buckets.push('free')
+    if (
+      published &&
+      active.every((org) => (org.ticketsSold || 0) === 0 && (org.pendingReceipts || 0) === 0)
+    ) {
+      buckets.push('no_sales')
+    }
 
     const recipient = { userId: user.id, email }
     const blocked = opts.blockedEmails.has(email)

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { ticketSaleActivity } from '@/lib/activation-contacts'
 import {
   classifyBlogAudiences,
   deliveryBlocksResend,
@@ -27,6 +28,54 @@ async function eachPage<T>(load: (from: number, to: number) => PromiseLike<PageR
   return rows
 }
 
+export type TicketActivityCounts = { sold: number; pendingReceipts: number }
+
+/**
+ * Sold tickets, plus reserved tickets whose purchase has a payment receipt.
+ * Grouped by organization for active raffles.
+ */
+export async function countTicketActivityByOrg(
+  admin: Admin,
+  raffles: { id: string; org_id: string }[],
+): Promise<Map<string, TicketActivityCounts>> {
+  const orgByRaffle = new Map(raffles.map((row) => [row.id, row.org_id]))
+  const counts = new Map<string, TicketActivityCounts>()
+  const ids = [...orgByRaffle.keys()]
+  for (let index = 0; index < ids.length; index += 100) {
+    const slice = ids.slice(index, index + 100)
+    const rows = await eachPage<{
+      raffle_id: string
+      status: string
+      purchases: { voucher_path: string | null } | { voucher_path: string | null }[] | null
+    }>((from, to) =>
+      admin
+        .from('tickets')
+        .select('raffle_id, status, purchases(voucher_path)')
+        .in('status', ['sold', 'reserved'])
+        .in('raffle_id', slice)
+        .range(from, to),
+    )
+    for (const row of rows) {
+      const orgId = orgByRaffle.get(row.raffle_id)
+      if (!orgId) continue
+      const activity = ticketSaleActivity({ status: row.status, voucherPath: voucherPathOf(row.purchases) })
+      if (activity === 'none') continue
+      const current = counts.get(orgId) || { sold: 0, pendingReceipts: 0 }
+      if (activity === 'sold') current.sold += 1
+      else current.pendingReceipts += 1
+      counts.set(orgId, current)
+    }
+  }
+  return counts
+}
+
+function voucherPathOf(
+  purchase: { voucher_path: string | null } | { voucher_path: string | null }[] | null,
+): string | null {
+  const row = Array.isArray(purchase) ? purchase[0] : purchase
+  return row?.voucher_path ?? null
+}
+
 export async function loadBlogAudience(admin: Admin, slug: string, now = new Date()): Promise<BlogAudienceSnapshot> {
   const authUsers: { id: string; email?: string | null; email_confirmed_at?: string | null }[] = []
   for (let page = 1; page <= 50; page += 1) {
@@ -44,8 +93,8 @@ export async function loadBlogAudience(admin: Admin, slug: string, now = new Dat
       (from, to) =>
         admin.from('organizations').select('id, slug, plan, stripe_subscription_status').range(from, to),
     ),
-    eachPage<{ org_id: string }>((from, to) =>
-      admin.from('raffles').select('org_id').eq('status', 'active').range(from, to),
+    eachPage<{ id: string; org_id: string }>((from, to) =>
+      admin.from('raffles').select('id, org_id').eq('status', 'active').range(from, to),
     ),
     eachPage<{ email: string }>((from, to) =>
       admin.from('blog_email_unsubscribes').select('email').range(from, to),
@@ -61,6 +110,7 @@ export async function loadBlogAudience(admin: Admin, slug: string, now = new Dat
   ])
 
   const activeOrgs = new Set(raffles.map((row) => row.org_id))
+  const activityByOrg = await countTicketActivityByOrg(admin, raffles)
   const orgsById = new Map(orgs.map((org) => [org.id, org]))
   const orgsByUser = new Map<string, AudienceUser['orgs']>()
 
@@ -73,6 +123,8 @@ export async function loadBlogAudience(admin: Admin, slug: string, now = new Dat
       plan: org.plan || 'free',
       stripeStatus: org.stripe_subscription_status,
       hasActiveRaffle: activeOrgs.has(org.id),
+      ticketsSold: activityByOrg.get(org.id)?.sold || 0,
+      pendingReceipts: activityByOrg.get(org.id)?.pendingReceipts || 0,
     })
     orgsByUser.set(member.user_id, list)
   }

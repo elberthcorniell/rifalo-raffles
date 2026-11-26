@@ -23,7 +23,7 @@ const nav = [
   { href: '/superadmin/users', label: 'Usuarios', icon: Users },
   { href: '/superadmin/orgs', label: 'Organizaciones', icon: Building2 },
   { href: '/superadmin/raffles', label: 'Rifas', icon: Ticket },
-  { href: '/superadmin/blog', label: 'Correo del blog', icon: Mail },
+  { href: '/superadmin/blog', label: 'Correo', icon: Mail },
 ]
 
 export function SuperadminShell({

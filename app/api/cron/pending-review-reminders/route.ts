@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { runOrganizerActivation } from '@/lib/activation-run'
 import { cronAuthorized } from '@/lib/emails/cron-auth'
 import { runReviewReminderCron } from '@/lib/emails/review-reminder-run'
 import { createAdminClient, hasSupabaseConfig } from '@/lib/supabase/admin'
@@ -21,8 +22,21 @@ export async function GET(request: Request) {
   }
 
   try {
-    const result = await runReviewReminderCron(createAdminClient())
-    return NextResponse.json(result)
+    const admin = createAdminClient()
+    const result = await runReviewReminderCron(admin)
+    let activation: { ok: boolean; skipped?: string; sent: number } = {
+      ok: true,
+      skipped: 'disabled',
+      sent: 0,
+    }
+    try {
+      activation = await runOrganizerActivation(admin)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'failed'
+      console.error('Organizer activation failed', message.slice(0, 200))
+      activation = { ok: false, skipped: 'failed', sent: 0 }
+    }
+    return NextResponse.json({ ...result, activation })
   } catch (err) {
     console.error('Pending review reminders failed', err)
     return NextResponse.json({ ok: false, error: 'failed' }, { status: 500 })

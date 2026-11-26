@@ -10,6 +10,7 @@ import {
   BLOG_EMAIL_EXCLUDED_ORG_SLUGS,
   type BlogAudienceId,
 } from '@/lib/blog-audience'
+import { OrganizerActivationPanel } from '@/components/superadmin/OrganizerActivationPanel'
 
 type PostOption = {
   slug: string
@@ -49,8 +50,10 @@ export function BlogSendForm() {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [typed, setTyped] = useState('')
   const [sending, setSending] = useState<'test' | 'bulk' | null>(null)
+  const [view, setView] = useState<'post' | 'activation'>('post')
 
   useEffect(() => {
+    if (view !== 'post') return
     const handle = window.setTimeout(() => {
       const params = new URLSearchParams()
       if (slug) params.set('slug', slug)
@@ -75,7 +78,7 @@ export function BlogSendForm() {
     }, slug ? 250 : 0)
 
     return () => window.clearTimeout(handle)
-  }, [slug, subject])
+  }, [slug, subject, view])
 
   const selected = data?.selected
   const count = data?.audiences?.[audience]?.willSend ?? 0
@@ -133,6 +136,17 @@ export function BlogSendForm() {
 
   return (
     <div className="space-y-6 max-w-5xl">
+      <div className="flex gap-2" role="tablist" aria-label="Tipo de correo">
+        <TabButton active={view === 'post'} onClick={() => setView('post')}>
+          Post del blog
+        </TabButton>
+        <TabButton active={view === 'activation'} onClick={() => setView('activation')}>
+          Activación
+        </TabButton>
+      </div>
+      {view === 'activation' ? <OrganizerActivationPanel /> : null}
+      {view === 'post' ? (
+      <>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-[#0B2447]">Enviar post por email</h1>
@@ -314,7 +328,35 @@ export function BlogSendForm() {
           </div>
         </div>
       )}
+      </>
+      ) : null}
     </div>
+  )
+}
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={
+        active
+          ? 'rounded-full bg-[#0B2447] px-4 py-1.5 text-sm font-medium text-white'
+          : 'rounded-full border bg-white px-4 py-1.5 text-sm font-medium text-[#0B2447]'
+      }
+    >
+      {children}
+    </button>
   )
 }
 
