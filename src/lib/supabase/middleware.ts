@@ -11,6 +11,7 @@ import { isTenantContentPath } from '@/lib/storefront-paths'
 import { isBlogUnsubscribePath, isMarketingBlogPath } from '@/lib/blog-paths'
 import { isSuperadminEmail, isSuperadminPath } from '@/lib/superadmin'
 import { effectiveOrgPlan } from '@/lib/billing'
+import { readTenantRow, TenantLookupError, TENANT_UNAVAILABLE_BODY } from '@/lib/tenant-lookup'
 
 function createServiceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -41,11 +42,13 @@ function assumeTenantSlug(host: string): string | null {
 async function lookupOrgByCustomDomain(service: ServiceClient, host: string): Promise<TenantOrg | null> {
   const domains = host.startsWith('www.') ? [host, host.slice(4)] : [host]
   for (const domain of domains) {
-    const { data } = await service
-      .from('organizations')
-      .select('id, slug, plan, plan_override, custom_domain, onboarding_completed_at')
-      .eq('custom_domain', domain)
-      .maybeSingle()
+    const data = readTenantRow(
+      await service
+        .from('organizations')
+        .select('id, slug, plan, plan_override, custom_domain, onboarding_completed_at')
+        .eq('custom_domain', domain)
+        .maybeSingle()
+    )
 
     if (data && effectiveOrgPlan(data) === 'unlimited') return data
   }
@@ -54,12 +57,13 @@ async function lookupOrgByCustomDomain(service: ServiceClient, host: string): Pr
 
 async function lookupOrgBySlug(service: ServiceClient, slug: string): Promise<TenantOrg | null> {
   if (!isValidSlug(slug) || (RESERVED_SLUGS as readonly string[]).includes(slug)) return null
-  const { data } = await service
-    .from('organizations')
-    .select('id, slug, onboarding_completed_at')
-    .eq('slug', slug)
-    .maybeSingle()
-  return data
+  return readTenantRow(
+    await service
+      .from('organizations')
+      .select('id, slug, onboarding_completed_at')
+      .eq('slug', slug)
+      .maybeSingle()
+  )
 }
 
 /** Preserve subdomain when redirecting (nextUrl may use the bind host). */
@@ -299,26 +303,56 @@ export async function updateSession(request: NextRequest) {
 
   const service = createServiceClient()
   if (service) {
-    const orgFromDomain = await lookupOrgByCustomDomain(service, resolved.host)
-    if (orgFromDomain) {
-      return continueAsTenant(request, requestHeaders, pathname, service, orgFromDomain)
+    try {
+      return await routeTenantHost(request, requestHeaders, pathname, service, resolved)
+    } catch (error) {
+      if (!(error instanceof TenantLookupError)) throw error
+      console.error('tenant_lookup_failed', {
+        host: resolved.host,
+        status: error.status,
+        code: error.code,
+        message: error.message,
+      })
+      return new NextResponse(TENANT_UNAVAILABLE_BODY, {
+        status: 503,
+        headers: {
+          'content-type': 'text/html; charset=utf-8',
+          'cache-control': 'no-store',
+          'retry-after': '60',
+        },
+      })
     }
+  }
 
-    const slug =
-      resolved.kind === 'tenant' && resolved.slug ? resolved.slug : assumeTenantSlug(resolved.host)
+  return continueAsPlatform(request, requestHeaders, pathname)
+}
 
-    if (slug === 'www') {
-      return continueAsPlatform(request, requestHeaders, pathname)
+async function routeTenantHost(
+  request: NextRequest,
+  requestHeaders: Headers,
+  pathname: string,
+  service: ServiceClient,
+  resolved: ReturnType<typeof parseHost>
+) {
+  const orgFromDomain = await lookupOrgByCustomDomain(service, resolved.host)
+  if (orgFromDomain) {
+    return continueAsTenant(request, requestHeaders, pathname, service, orgFromDomain)
+  }
+
+  const slug =
+    resolved.kind === 'tenant' && resolved.slug ? resolved.slug : assumeTenantSlug(resolved.host)
+
+  if (slug === 'www') {
+    return continueAsPlatform(request, requestHeaders, pathname)
+  }
+
+  if (slug && isValidSlug(slug) && !(RESERVED_SLUGS as readonly string[]).includes(slug)) {
+    const org = await lookupOrgBySlug(service, slug)
+    if (org) {
+      return continueAsTenant(request, requestHeaders, pathname, service, org)
     }
-
-    if (slug && isValidSlug(slug) && !(RESERVED_SLUGS as readonly string[]).includes(slug)) {
-      const org = await lookupOrgBySlug(service, slug)
-      if (org) {
-        return continueAsTenant(request, requestHeaders, pathname, service, org)
-      }
-      if (resolved.kind === 'tenant') {
-        return continueAsMissingOrg(request, pathname)
-      }
+    if (resolved.kind === 'tenant') {
+      return continueAsMissingOrg(request, pathname)
     }
   }
 
