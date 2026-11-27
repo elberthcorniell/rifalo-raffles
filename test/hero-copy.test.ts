@@ -25,10 +25,23 @@ const VARIANTS = {
   },
 } as const;
 
+const CAMPAIGNS = ["rifalo_manual_v3", "rifalo_motion_v1"] as const;
+
+const MOTION_ALIASES = {
+  "2A-M1": "2A",
+  "2A-M2": "2A",
+  "3A-M1": "3A",
+} as const;
+
 describe("heroCopyForUtms", () => {
-  it("returns the paired copy for rifalo_manual_v3", () => {
-    for (const [content, copy] of Object.entries(VARIANTS)) {
-      assert.deepEqual(heroCopyForUtms("rifalo_manual_v3", content), copy);
+  it("returns the paired copy for rifalo_manual_v3 and rifalo_motion_v1", () => {
+    for (const campaign of CAMPAIGNS) {
+      for (const [content, copy] of Object.entries(VARIANTS)) {
+        assert.deepEqual(heroCopyForUtms(campaign, content), copy);
+      }
+      for (const [content, parent] of Object.entries(MOTION_ALIASES)) {
+        assert.deepEqual(heroCopyForUtms(campaign, content), VARIANTS[parent]);
+      }
     }
   });
 
@@ -47,12 +60,16 @@ describe("heroCopyForUtms", () => {
     assert.deepEqual(heroCopyForUtms(undefined, "1A"), DEFAULT_HERO_COPY);
     assert.deepEqual(heroCopyForUtms("other_campaign", "1A"), DEFAULT_HERO_COPY);
     assert.deepEqual(heroCopyForUtms("", "1A"), DEFAULT_HERO_COPY);
+    assert.deepEqual(heroCopyForUtms(undefined, "2A-M1"), DEFAULT_HERO_COPY);
+    assert.deepEqual(heroCopyForUtms("other_campaign", "3A-M1"), DEFAULT_HERO_COPY);
   });
 
   it("falls back when the pair is missing or unknown", () => {
     assert.deepEqual(heroCopyForUtms(undefined, undefined), DEFAULT_HERO_COPY);
     assert.deepEqual(heroCopyForUtms("rifalo_manual_v3", undefined), DEFAULT_HERO_COPY);
+    assert.deepEqual(heroCopyForUtms("rifalo_motion_v1", undefined), DEFAULT_HERO_COPY);
     assert.deepEqual(heroCopyForUtms("rifalo_manual_v3", "1B"), DEFAULT_HERO_COPY);
+    assert.deepEqual(heroCopyForUtms("rifalo_motion_v1", "1B"), DEFAULT_HERO_COPY);
     assert.deepEqual(heroCopyForUtms("rifalo_manual_v3", "1a"), DEFAULT_HERO_COPY);
   });
 });
